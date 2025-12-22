@@ -22,6 +22,47 @@ import {
    History,
 } from "lucide-react";
 import { formatBytes, formatRelativeTime } from "@/lib/utils/format";
+import { ShareDocument } from "@/components/documents/sharing/ShareDocument";
+import { User as UserType } from "@/lib/types/user";
+import { PermissionLevel } from "@/components/documents/sharing/PermissionSelector";
+import { ShareLinkSettings } from "@/components/documents/sharing/ShareLinkGenerator";
+
+// Mock users for sharing (will be replaced with real API)
+const MOCK_USERS: UserType[] = [
+   {
+      id: "user-1",
+      email: "john.doe@example.com",
+      name: "John Doe",
+      role: "editor",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      mfaEnabled: false,
+      isActive: true,
+   },
+   {
+      id: "user-2",
+      email: "jane.smith@example.com",
+      name: "Jane Smith",
+      role: "viewer",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      mfaEnabled: false,
+      isActive: true,
+   },
+   {
+      id: "user-3",
+      email: "bob.johnson@example.com",
+      name: "Bob Johnson",
+      role: "admin",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      mfaEnabled: false,
+      isActive: true,
+   },
+];
 
 /**
  * DocumentDetailPage Component
@@ -48,6 +89,9 @@ const DocumentDetailPage: FC = () => {
       fetchShares,
       deleteDocument,
       verifyBlockchain,
+      shareDocument,
+      removeShare,
+      generateShareLink,
    } = useDocumentStore();
 
    const [isDeleting, setIsDeleting] = useState(false);
@@ -440,41 +484,72 @@ const DocumentDetailPage: FC = () => {
 
             {/* Share Tab */}
             <TabsContent value='share'>
-               <div className='space-y-4'>
-                  <h3 className='font-semibold text-lg'>Shared With</h3>
-                  {shares.length === 0 ? (
-                     <p className='text-muted-foreground'>
-                        This document hasn't been shared yet
-                     </p>
-                  ) : (
-                     <div className='space-y-2'>
-                        {shares.map((share) => (
-                           <div
-                              key={share.id}
-                              className='border rounded-lg p-4 flex items-center justify-between'
-                           >
-                              <div className='flex items-center gap-3'>
-                                 <User
-                                    size={16}
-                                    className='text-muted-foreground'
-                                 />
-                                 <div>
-                                    <p className='font-medium'>
-                                       {share.sharedWith.name}
-                                    </p>
-                                    <p className='text-sm text-muted-foreground'>
-                                       {share.sharedWith.email}
-                                    </p>
-                                 </div>
-                              </div>
-                              <Badge variant='secondary'>
-                                 {share.permission}
-                              </Badge>
-                           </div>
-                        ))}
-                     </div>
-                  )}
-               </div>
+               {document && (
+                  <ShareDocument
+                     document={document}
+                     shares={shares}
+                     availableUsers={MOCK_USERS}
+                     onShare={async (
+                        userId: string,
+                        permission: PermissionLevel
+                     ) => {
+                        try {
+                           await shareDocument(documentId, userId, permission);
+                           toast.success("Document shared successfully");
+                           fetchShares(documentId);
+                        } catch (error: any) {
+                           toast.error(
+                              "Failed to share document",
+                              error.message
+                           );
+                        }
+                     }}
+                     onRemoveShare={async (shareId: string) => {
+                        try {
+                           await removeShare(shareId);
+                           toast.success("Share removed successfully");
+                           fetchShares(documentId);
+                        } catch (error: any) {
+                           toast.error("Failed to remove share", error.message);
+                        }
+                     }}
+                     onGenerateLink={async (settings: ShareLinkSettings) => {
+                        try {
+                           const permission =
+                              settings.permission === "admin"
+                                 ? "edit"
+                                 : settings.permission;
+                           const link = await generateShareLink(documentId, {
+                              permission,
+                              expiresAt: settings.expiresAt,
+                              password: settings.requirePassword
+                                 ? settings.password
+                                 : undefined,
+                              allowDownload: settings.allowDownload,
+                              blockchainAudit:
+                                 settings.blockchainAudit ?? false,
+                           });
+                           toast.success("Share link generated");
+                           return { id: link.id, url: link.url };
+                        } catch (error: any) {
+                           toast.error(
+                              "Failed to generate link",
+                              error.message
+                           );
+                           throw error;
+                        }
+                     }}
+                     onRevokeLink={async (linkId: string) => {
+                        try {
+                           // TODO: Implement revoke link API
+                           console.log("Revoke link:", linkId);
+                           toast.success("Share link revoked");
+                        } catch (error: any) {
+                           toast.error("Failed to revoke link", error.message);
+                        }
+                     }}
+                  />
+               )}
             </TabsContent>
          </Tabs>
       </div>

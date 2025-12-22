@@ -18,13 +18,18 @@ export default function DashboardLayout({
    const { isAuthenticated, isLoading } = useAuth();
    const router = useRouter();
 
+   // Skip auth check in development with mock auth
+   const useMockAuth =
+      process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true" ||
+      process.env.NODE_ENV === "development";
+
    useEffect(() => {
-      if (!isLoading && !isAuthenticated) {
+      if (!useMockAuth && !isLoading && !isAuthenticated) {
          router.push("/login");
       }
-   }, [isAuthenticated, isLoading, router]);
+   }, [isAuthenticated, isLoading, router, useMockAuth]);
 
-   if (isLoading) {
+   if (!useMockAuth && isLoading) {
       return (
          <div className='flex items-center justify-center min-h-screen'>
             <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary' />
@@ -32,7 +37,7 @@ export default function DashboardLayout({
       );
    }
 
-   if (!isAuthenticated) {
+   if (!useMockAuth && !isAuthenticated) {
       return null;
    }
 

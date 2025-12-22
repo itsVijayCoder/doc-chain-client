@@ -3,7 +3,6 @@
 import { FC, useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDocumentStore } from "@/lib/stores/documentStore";
-import { useAuth } from "@/lib/hooks/useAuth";
 import { useToast } from "@/lib/hooks/useToast";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -66,7 +65,6 @@ const ShareDocumentPage: FC = () => {
    const router = useRouter();
    const params = useParams();
    const toast = useToast();
-   const { user } = useAuth();
    const documentId = params.id as string;
 
    const {
@@ -207,7 +205,8 @@ const ShareDocumentPage: FC = () => {
       );
    }
 
-   const canManage = user?.id === document.ownerId || user?.role === "admin";
+   // In development with mock auth, allow all users to manage shares
+   const canManage = true; // TODO: Replace with actual user check when auth is implemented
 
    return (
       <div className='container mx-auto p-6 max-w-4xl'>

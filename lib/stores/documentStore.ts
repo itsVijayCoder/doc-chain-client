@@ -10,6 +10,7 @@ import {
    ShareLinkOptions,
    ShareLink,
 } from "@/lib/types";
+import { User } from "@/lib/types/user";
 
 interface DocumentState {
    // Documents list
@@ -94,8 +95,223 @@ const initialFilters: DocumentFilters = {
    owner: [],
 };
 
+// Mock Users
+const mockUsers: User[] = [
+   {
+      id: "user-1",
+      email: "admin@docchain.com",
+      name: "Admin User",
+      role: "admin",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Admin",
+      bio: "System Administrator",
+      createdAt: new Date("2024-01-01"),
+      updatedAt: new Date("2024-01-01"),
+      mfaEnabled: true,
+      isActive: true,
+   },
+   {
+      id: "user-2",
+      email: "john@docchain.com",
+      name: "John Doe",
+      role: "editor",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
+      bio: "Senior Editor",
+      createdAt: new Date("2024-02-01"),
+      updatedAt: new Date("2024-02-01"),
+      mfaEnabled: false,
+      isActive: true,
+   },
+   {
+      id: "user-3",
+      email: "jane@docchain.com",
+      name: "Jane Smith",
+      role: "viewer",
+      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
+      bio: "Document Viewer",
+      createdAt: new Date("2024-03-01"),
+      updatedAt: new Date("2024-03-01"),
+      mfaEnabled: false,
+      isActive: true,
+   },
+];
+
+// Mock Documents
+const mockDocuments: Document[] = [
+   {
+      id: "doc-1",
+      title: "Project Proposal 2025",
+      description:
+         "Comprehensive project proposal for Q1 2025 blockchain integration initiative",
+      fileName: "project-proposal-2025.pdf",
+      fileSize: 2457600, // 2.4 MB
+      mimeType: "application/pdf",
+      ownerId: "user-1",
+      owner: mockUsers[0],
+      tags: ["proposal", "blockchain", "Q1-2025"],
+      blockchainHash: "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb1",
+      blockchainVerified: true,
+      isEncrypted: true,
+      isFavorite: true,
+      createdAt: new Date("2024-12-01"),
+      updatedAt: new Date("2024-12-15"),
+      version: 3,
+      shareCount: 5,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/4f46e5/ffffff?text=Project+Proposal",
+   },
+   {
+      id: "doc-2",
+      title: "Smart Contract Specifications",
+      description:
+         "Technical specifications for document verification smart contracts",
+      fileName: "smart-contract-specs.docx",
+      fileSize: 1048576, // 1 MB
+      mimeType:
+         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ownerId: "user-2",
+      owner: mockUsers[1],
+      tags: ["smart-contract", "technical", "blockchain"],
+      blockchainHash: "0x8ba1f109551bD432803012645Ac136ddd64DBA72",
+      blockchainVerified: true,
+      isEncrypted: false,
+      isFavorite: false,
+      createdAt: new Date("2024-11-15"),
+      updatedAt: new Date("2024-12-10"),
+      version: 5,
+      shareCount: 8,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/10b981/ffffff?text=Smart+Contracts",
+   },
+   {
+      id: "doc-3",
+      title: "User Guide - Document Chain",
+      description: "Complete user guide for the Document Chain platform",
+      fileName: "user-guide.pdf",
+      fileSize: 5242880, // 5 MB
+      mimeType: "application/pdf",
+      ownerId: "user-1",
+      owner: mockUsers[0],
+      tags: ["documentation", "user-guide", "help"],
+      blockchainVerified: false,
+      isEncrypted: false,
+      isFavorite: true,
+      createdAt: new Date("2024-10-20"),
+      updatedAt: new Date("2024-12-18"),
+      version: 12,
+      shareCount: 25,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/f59e0b/ffffff?text=User+Guide",
+   },
+   {
+      id: "doc-4",
+      title: "Q4 Financial Report",
+      description: "Financial performance report for Q4 2024",
+      fileName: "q4-financial-report.xlsx",
+      fileSize: 3145728, // 3 MB
+      mimeType:
+         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ownerId: "user-2",
+      owner: mockUsers[1],
+      tags: ["finance", "report", "Q4-2024"],
+      blockchainHash: "0x4e83362442B8d1beC281594CEA3050c8EB01311C",
+      blockchainVerified: true,
+      isEncrypted: true,
+      isFavorite: false,
+      createdAt: new Date("2024-12-20"),
+      updatedAt: new Date("2024-12-20"),
+      version: 1,
+      shareCount: 3,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/06b6d4/ffffff?text=Financial+Report",
+   },
+   {
+      id: "doc-5",
+      title: "API Documentation v2.0",
+      description:
+         "REST API documentation for Document Chain platform version 2.0",
+      fileName: "api-docs-v2.pdf",
+      fileSize: 1572864, // 1.5 MB
+      mimeType: "application/pdf",
+      ownerId: "user-3",
+      owner: mockUsers[2],
+      tags: ["api", "documentation", "technical"],
+      blockchainHash: "0x2546BcD3c84621e976D8185a91A922aE77ECEc30",
+      blockchainVerified: true,
+      isEncrypted: false,
+      isFavorite: true,
+      createdAt: new Date("2024-11-01"),
+      updatedAt: new Date("2024-12-05"),
+      version: 7,
+      shareCount: 15,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/8b5cf6/ffffff?text=API+Docs",
+   },
+   {
+      id: "doc-6",
+      title: "Security Audit Report",
+      description: "Comprehensive security audit findings and recommendations",
+      fileName: "security-audit-2024.pdf",
+      fileSize: 4194304, // 4 MB
+      mimeType: "application/pdf",
+      ownerId: "user-1",
+      owner: mockUsers[0],
+      tags: ["security", "audit", "confidential"],
+      blockchainHash: "0xeC1D6163E05b0Cc4f4e8a0c97c76c4e0f7EE4b51",
+      blockchainVerified: true,
+      isEncrypted: true,
+      isFavorite: false,
+      createdAt: new Date("2024-12-10"),
+      updatedAt: new Date("2024-12-12"),
+      version: 2,
+      shareCount: 2,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/ef4444/ffffff?text=Security+Audit",
+   },
+   {
+      id: "doc-7",
+      title: "Marketing Strategy 2025",
+      description: "Marketing and growth strategy for 2025",
+      fileName: "marketing-strategy-2025.pptx",
+      fileSize: 8388608, // 8 MB
+      mimeType:
+         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ownerId: "user-2",
+      owner: mockUsers[1],
+      tags: ["marketing", "strategy", "2025"],
+      blockchainVerified: false,
+      isEncrypted: false,
+      isFavorite: false,
+      createdAt: new Date("2024-12-05"),
+      updatedAt: new Date("2024-12-19"),
+      version: 4,
+      shareCount: 6,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/ec4899/ffffff?text=Marketing+Strategy",
+   },
+   {
+      id: "doc-8",
+      title: "Team Meeting Notes - Dec 2024",
+      description: "Consolidated meeting notes from December 2024",
+      fileName: "meeting-notes-dec-2024.txt",
+      fileSize: 524288, // 512 KB
+      mimeType: "text/plain",
+      ownerId: "user-3",
+      owner: mockUsers[2],
+      tags: ["meeting-notes", "december", "team"],
+      blockchainVerified: false,
+      isEncrypted: false,
+      isFavorite: true,
+      createdAt: new Date("2024-12-01"),
+      updatedAt: new Date("2024-12-22"),
+      version: 8,
+      shareCount: 12,
+      thumbnailUrl:
+         "https://via.placeholder.com/400x300/64748b/ffffff?text=Meeting+Notes",
+   },
+];
+
 export const useDocumentStore = create<DocumentState>((set, get) => ({
-   documents: [],
+   documents: mockDocuments,
    currentDocument: null,
    filters: initialFilters,
    sortBy: "recent",
