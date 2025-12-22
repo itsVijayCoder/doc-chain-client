@@ -173,7 +173,7 @@ export const DocumentFilters: FC<DocumentFiltersProps> = ({
                   {activeFiltersCount > 0 && (
                      <Badge
                         variant='default'
-                        className='ml-1 px-1.5 min-w-[20px] h-5'
+                        className='ml-1 px-1.5 min-w-5 h-5'
                      >
                         {activeFiltersCount}
                      </Badge>

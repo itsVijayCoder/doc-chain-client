@@ -70,7 +70,7 @@ interface DocumentState {
    shareDocument: (
       documentId: string,
       userId: string,
-      permission: "view" | "edit"
+      permission: "view" | "edit" | "admin"
    ) => Promise<void>;
    removeShare: (shareId: string) => Promise<void>;
    generateShareLink: (
