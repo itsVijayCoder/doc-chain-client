@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
 
@@ -7,7 +8,9 @@ export default function LoginPage() {
          title='Welcome back'
          subtitle='Sign in to your DocChain account'
       >
-         <LoginForm />
+         <Suspense fallback={<div className="flex justify-center py-8">Loading...</div>}>
+            <LoginForm />
+         </Suspense>
       </AuthLayout>
    );
 }

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { User, LoginCredentials, RegisterData } from "@/lib/types";
+import { authService } from "@/lib/services/authService";
 
 interface AuthState {
    user: User | null;
@@ -29,18 +30,7 @@ export const useAuthStore = create<AuthState>()(
          login: async (credentials) => {
             set({ isLoading: true, error: null });
             try {
-               // TODO: Replace with actual API call
-               const response = await fetch("/api/auth/login", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(credentials),
-               });
-
-               if (!response.ok) {
-                  throw new Error("Login failed");
-               }
-
-               const { user, token } = await response.json();
+               const { user, token } = await authService.login(credentials);
 
                // Store token
                localStorage.setItem("token", token);
@@ -51,10 +41,9 @@ export const useAuthStore = create<AuthState>()(
                   isLoading: false,
                   error: null,
                });
-            } catch (error) {
+            } catch (error: any) {
                set({
-                  error:
-                     error instanceof Error ? error.message : "Login failed",
+                  error: error?.message || "Login failed",
                   isLoading: false,
                });
                throw error;
@@ -64,18 +53,7 @@ export const useAuthStore = create<AuthState>()(
          register: async (data) => {
             set({ isLoading: true, error: null });
             try {
-               // TODO: Replace with actual API call
-               const response = await fetch("/api/auth/register", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(data),
-               });
-
-               if (!response.ok) {
-                  throw new Error("Registration failed");
-               }
-
-               const { user, token } = await response.json();
+               const { user, token } = await authService.register(data);
 
                // Store token
                localStorage.setItem("token", token);
@@ -86,19 +64,21 @@ export const useAuthStore = create<AuthState>()(
                   isLoading: false,
                   error: null,
                });
-            } catch (error) {
+            } catch (error: any) {
                set({
-                  error:
-                     error instanceof Error
-                        ? error.message
-                        : "Registration failed",
+                  error: error?.message || "Registration failed",
                   isLoading: false,
                });
                throw error;
             }
          },
 
-         logout: () => {
+         logout: async () => {
+            try {
+               await authService.logout();
+            } catch (error) {
+               // Ignore logout errors
+            }
             localStorage.removeItem("token");
             set({
                user: null,
@@ -110,20 +90,11 @@ export const useAuthStore = create<AuthState>()(
          forgotPassword: async (email) => {
             set({ isLoading: true, error: null });
             try {
-               // TODO: Replace with actual API call
-               await fetch("/api/auth/forgot-password", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ email }),
-               });
-
+               await authService.forgotPassword(email);
                set({ isLoading: false });
-            } catch (error) {
+            } catch (error: any) {
                set({
-                  error:
-                     error instanceof Error
-                        ? error.message
-                        : "Failed to send reset email",
+                  error: error?.message || "Failed to send reset email",
                   isLoading: false,
                });
                throw error;
@@ -133,20 +104,11 @@ export const useAuthStore = create<AuthState>()(
          resetPassword: async (token, newPassword) => {
             set({ isLoading: true, error: null });
             try {
-               // TODO: Replace with actual API call
-               await fetch("/api/auth/reset-password", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ token, newPassword }),
-               });
-
+               await authService.resetPassword(token, newPassword);
                set({ isLoading: false });
-            } catch (error) {
+            } catch (error: any) {
                set({
-                  error:
-                     error instanceof Error
-                        ? error.message
-                        : "Failed to reset password",
+                  error: error?.message || "Failed to reset password",
                   isLoading: false,
                });
                throw error;
@@ -162,18 +124,7 @@ export const useAuthStore = create<AuthState>()(
 
             set({ isLoading: true });
             try {
-               // TODO: Replace with actual API call
-               const response = await fetch("/api/auth/me", {
-                  headers: {
-                     Authorization: `Bearer ${token}`,
-                  },
-               });
-
-               if (!response.ok) {
-                  throw new Error("Invalid token");
-               }
-
-               const user = await response.json();
+               const user = await authService.me();
 
                set({
                   user,

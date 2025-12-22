@@ -1,7 +1,7 @@
 "use client";
 
-import { FC, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FC, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useToast } from "@/lib/hooks/useToast";
@@ -15,8 +15,11 @@ import { cn } from "@/lib/utils";
 
 export const LoginForm: FC = () => {
    const router = useRouter();
+   const searchParams = useSearchParams();
    const { login, isLoading } = useAuth();
    const toast = useToast();
+
+   const redirectTo = searchParams.get("redirect") || "/dashboard";
 
    const [formData, setFormData] = useState({
       email: "",
@@ -93,7 +96,12 @@ export const LoginForm: FC = () => {
          });
 
          toast.success("Welcome back!", "Login successful");
-         router.push("/dashboard");
+         
+         // Use setTimeout to ensure state is updated before redirect
+         setTimeout(() => {
+            router.push(redirectTo);
+            router.refresh();
+         }, 100);
       } catch (error: any) {
          toast.error("Login failed", error.message || "Invalid credentials");
       }
@@ -204,6 +212,63 @@ export const LoginForm: FC = () => {
                "Sign in"
             )}
          </Button>
+
+         {/* Test Credentials Info (Development Only) */}
+         {process.env.NODE_ENV === "development" && (
+            <div className='p-4 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 space-y-2'>
+               <p className='text-xs font-semibold text-muted-foreground text-center'>
+                  🧪 Test Credentials (Dev Only)
+               </p>
+               <div className='grid gap-2 text-xs'>
+                  <div className='flex justify-between items-center p-2 rounded bg-background/50'>
+                     <div>
+                        <p className='font-medium'>Admin Account</p>
+                        <p className='text-muted-foreground'>
+                           admin@docchain.com / admin123
+                        </p>
+                     </div>
+                     <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={() => {
+                           setFormData({
+                              email: "admin@docchain.com",
+                              password: "admin123",
+                              rememberMe: false,
+                           });
+                           setErrors({});
+                        }}
+                     >
+                        Fill
+                     </Button>
+                  </div>
+                  <div className='flex justify-between items-center p-2 rounded bg-background/50'>
+                     <div>
+                        <p className='font-medium'>Standard User</p>
+                        <p className='text-muted-foreground'>
+                           user@docchain.com / user123
+                        </p>
+                     </div>
+                     <Button
+                        type='button'
+                        variant='outline'
+                        size='sm'
+                        onClick={() => {
+                           setFormData({
+                              email: "user@docchain.com",
+                              password: "user123",
+                              rememberMe: false,
+                           });
+                           setErrors({});
+                        }}
+                     >
+                        Fill
+                     </Button>
+                  </div>
+               </div>
+            </div>
+         )}
 
          {/* Register Link */}
          <p className='text-center text-sm text-muted-foreground'>

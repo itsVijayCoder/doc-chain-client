@@ -39,24 +39,22 @@ export const ProfileDropdown: FC = () => {
 
    return (
       <DropdownMenu>
-         <DropdownMenuTrigger>
-            <Button variant='ghost' className='flex items-center gap-2 px-2'>
-               <Avatar className='h-8 w-8'>
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className='text-xs'>
-                     {getInitials(user.name)}
-                  </AvatarFallback>
-               </Avatar>
-               <div className='hidden lg:block text-left'>
-                  <p className='text-sm font-medium leading-none'>
-                     {user.name}
-                  </p>
-                  <p className='text-xs text-muted-foreground mt-1'>
-                     {user.email}
-                  </p>
-               </div>
-               <ChevronDown size={16} className='text-muted-foreground' />
-            </Button>
+         <DropdownMenuTrigger className='inline-flex items-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground px-2 h-10'>
+            <Avatar className='h-8 w-8'>
+               <AvatarImage src={user.avatar} alt={user.name} />
+               <AvatarFallback className='text-xs'>
+                  {getInitials(user.name)}
+               </AvatarFallback>
+            </Avatar>
+            <div className='hidden lg:block text-left'>
+               <p className='text-sm font-medium leading-none'>
+                  {user.name}
+               </p>
+               <p className='text-xs text-muted-foreground mt-1'>
+                  {user.email}
+               </p>
+            </div>
+            <ChevronDown size={16} className='text-muted-foreground' />
          </DropdownMenuTrigger>
          <DropdownMenuContent className='w-64' align='end'>
             <DropdownMenuLabel>

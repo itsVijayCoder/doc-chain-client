@@ -15,6 +15,14 @@ const adminRoutes = ["/admin"];
 export function middleware(request: NextRequest) {
    const { pathname } = request.nextUrl;
 
+   // Skip middleware in development with mock auth
+   const useMockAuth =
+      process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true" ||
+      process.env.NODE_ENV === "development";
+   if (useMockAuth) {
+      return NextResponse.next();
+   }
+
    // Check if the route is public
    const isPublicRoute = publicRoutes.some((route) =>
       pathname.startsWith(route)
