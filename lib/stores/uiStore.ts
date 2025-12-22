@@ -5,6 +5,9 @@ interface UIState {
    sidebarOpen: boolean;
    sidebarCollapsed: boolean;
 
+   // Mobile Menu
+   mobileMenuOpen: boolean;
+
    // Modals
    activeModal: string | null;
    modalData: any;
@@ -16,6 +19,7 @@ interface UIState {
    toggleSidebar: () => void;
    setSidebarOpen: (open: boolean) => void;
    toggleSidebarCollapse: () => void;
+   setMobileMenuOpen: (open: boolean) => void;
    openModal: (modalId: string, data?: any) => void;
    closeModal: () => void;
    setTheme: (theme: "light" | "dark" | "system") => void;
@@ -24,6 +28,7 @@ interface UIState {
 export const useUIStore = create<UIState>((set) => ({
    sidebarOpen: true,
    sidebarCollapsed: false,
+   mobileMenuOpen: false,
    activeModal: null,
    modalData: null,
    theme: "system",
@@ -36,6 +41,8 @@ export const useUIStore = create<UIState>((set) => ({
       set((state) => ({
          sidebarCollapsed: !state.sidebarCollapsed,
       })),
+
+   setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
 
    openModal: (modalId, data) =>
       set({

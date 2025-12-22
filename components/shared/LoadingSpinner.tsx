@@ -18,7 +18,7 @@ export function LoadingSpinner({
    return (
       <div
          className={cn(
-            "inline-block animate-spin rounded-full border-solid border-[var(--primary)] border-r-transparent",
+            "inline-block animate-spin rounded-full border-solid border-primary border-r-transparent",
             sizeClasses[size],
             className
          )}
@@ -38,10 +38,10 @@ export function LoadingOverlay({
    message = "Loading...",
 }: LoadingOverlayProps) {
    return (
-      <div className='fixed inset-0 z-50 flex items-center justify-center bg-[var(--background)]/80 backdrop-blur-sm'>
+      <div className='fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm'>
          <div className='flex flex-col items-center gap-4'>
             <LoadingSpinner size='lg' />
-            <p className='text-sm text-[var(--muted-foreground)]'>{message}</p>
+            <p className='text-sm text-muted-foreground'>{message}</p>
          </div>
       </div>
    );

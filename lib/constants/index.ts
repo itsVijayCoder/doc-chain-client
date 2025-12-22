@@ -37,37 +37,37 @@ export const ROUTES = {
 export const NAVIGATION = {
    main: [
       {
-         icon: "dashboard",
+         icon: "Home",
          label: "Dashboard",
          href: ROUTES.DASHBOARD,
          roles: ["all"] as const,
       },
       {
-         icon: "document",
+         icon: "FileText",
          label: "My Documents",
          href: ROUTES.DOCUMENTS,
          roles: ["all"] as const,
       },
       {
-         icon: "shared",
+         icon: "Share2",
          label: "Shared with Me",
          href: ROUTES.SHARED,
          roles: ["all"] as const,
       },
       {
-         icon: "search",
+         icon: "Search",
          label: "Search",
          href: ROUTES.SEARCH,
          roles: ["all"] as const,
       },
       {
-         icon: "star",
+         icon: "Heart",
          label: "Favorites",
          href: ROUTES.FAVORITES,
          roles: ["all"] as const,
       },
       {
-         icon: "trash",
+         icon: "Trash2",
          label: "Trash",
          href: ROUTES.TRASH,
          roles: ["all"] as const,
@@ -75,25 +75,25 @@ export const NAVIGATION = {
    ],
    admin: [
       {
-         icon: "users",
+         icon: "Users",
          label: "Users",
          href: ROUTES.ADMIN_USERS,
          roles: ["admin"] as const,
       },
       {
-         icon: "security",
+         icon: "Lock",
          label: "Security",
          href: ROUTES.ADMIN_SECURITY,
          roles: ["admin"] as const,
       },
       {
-         icon: "blockchain",
+         icon: "Shield",
          label: "Blockchain",
          href: ROUTES.ADMIN_BLOCKCHAIN,
          roles: ["admin"] as const,
       },
       {
-         icon: "audit",
+         icon: "BrainCircuit",
          label: "Audit Logs",
          href: ROUTES.ADMIN_AUDIT_LOGS,
          roles: ["admin"] as const,
@@ -101,7 +101,7 @@ export const NAVIGATION = {
    ],
    settings: [
       {
-         icon: "settings",
+         icon: "Settings",
          label: "Settings",
          href: ROUTES.SETTINGS,
          roles: ["all"] as const,

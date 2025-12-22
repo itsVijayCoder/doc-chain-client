@@ -24,15 +24,11 @@ export function EmptyState({
          )}
       >
          {icon && (
-            <div className='mb-4 text-[var(--muted-foreground)] opacity-50'>
-               {icon}
-            </div>
+            <div className='mb-4 text-muted-foreground opacity-50'>{icon}</div>
          )}
-         <h3 className='text-lg font-semibold text-[var(--foreground)] mb-2'>
-            {title}
-         </h3>
+         <h3 className='text-lg font-semibold text-foreground mb-2'>{title}</h3>
          {description && (
-            <p className='text-sm text-[var(--muted-foreground)] mb-6 max-w-md'>
+            <p className='text-sm text-muted-foreground mb-6 max-w-md'>
                {description}
             </p>
          )}

@@ -13,9 +13,9 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
    subtitle,
 }) => {
    return (
-      <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4'>
+      <div className='min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-muted/20 p-4'>
          {/* Blockchain grid background effect */}
-         <div className='absolute inset-0 bg-grid-white/[0.02] bg-[size:60px_60px]' />
+         <div className='absolute inset-0 bg-grid-white/[0.02] bg-size-[60px_60px]' />
 
          {/* Animated glow effect */}
          <div className='absolute top-1/4 left-1/4 w-96 h-96 bg-blockchain/10 rounded-full blur-3xl animate-blockchain-pulse' />
@@ -25,7 +25,7 @@ export const AuthLayout: FC<AuthLayoutProps> = ({
             {/* Header */}
             <div className='text-center mb-8'>
                <div className='flex items-center justify-center mb-4'>
-                  <div className='w-12 h-12 rounded-lg bg-gradient-to-br from-blockchain-primary to-blockchain-secondary flex items-center justify-center'>
+                  <div className='w-12 h-12 rounded-lg bg-linear-to-br from-blockchain-primary to-blockchain-secondary flex items-center justify-center'>
                      <svg
                         className='w-6 h-6 text-white'
                         fill='none'
