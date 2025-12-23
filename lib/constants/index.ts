@@ -101,9 +101,21 @@ export const NAVIGATION = {
    ],
    settings: [
       {
-         icon: "Settings",
-         label: "Settings",
-         href: ROUTES.SETTINGS,
+         icon: "User",
+         label: "Profile",
+         href: ROUTES.SETTINGS_PROFILE,
+         roles: ["all"] as const,
+      },
+      {
+         icon: "Lock",
+         label: "Security",
+         href: ROUTES.SETTINGS_SECURITY,
+         roles: ["all"] as const,
+      },
+      {
+         icon: "Sliders",
+         label: "Preferences",
+         href: ROUTES.SETTINGS_PREFERENCES,
          roles: ["all"] as const,
       },
    ],

@@ -21,6 +21,8 @@ import {
    Shield,
    BrainCircuit,
    Settings,
+   User,
+   Sliders,
    ChevronLeft,
    ChevronRight,
 } from "lucide-react";
@@ -37,6 +39,8 @@ const iconMap = {
    Shield,
    BrainCircuit,
    Settings,
+   User,
+   Sliders,
 };
 
 export const AppSidebar: FC = () => {
