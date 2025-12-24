@@ -134,16 +134,18 @@ const SharedPage: FC = () => {
    }
 
    return (
-      <div className='container mx-auto p-6'>
+      <div className='container mx-auto p-6 space-y-6'>
          {/* Header */}
-         <div className='flex items-center justify-between mb-6'>
-            <div className='flex items-center gap-3'>
-               <div className='p-2 bg-blue-500/10 rounded-lg'>
-                  <Share2 size={24} className='text-blue-500' />
+         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+            <div className='flex items-center gap-4'>
+               <div className='p-3 bg-primary/10 rounded-xl'>
+                  <Share2 size={28} className='text-primary' />
                </div>
                <div>
-                  <h1 className='text-3xl font-bold'>Shared with Me</h1>
-                  <p className='text-muted-foreground'>
+                  <h1 className='text-3xl font-bold tracking-tight'>
+                     Shared with Me
+                  </h1>
+                  <p className='text-sm text-muted-foreground mt-1'>
                      {filteredDocuments.length} document
                      {filteredDocuments.length !== 1 ? "s" : ""} shared with you
                   </p>
@@ -151,14 +153,14 @@ const SharedPage: FC = () => {
             </div>
 
             {filteredDocuments.length > 0 && (
-               <div className='flex items-center gap-2'>
+               <div className='flex items-center gap-2 flex-wrap'>
                   {/* Permission filter */}
                   <select
                      value={permissionFilter}
                      onChange={(e) =>
                         setPermissionFilter(e.target.value as any)
                      }
-                     className='px-3 py-2 border rounded-lg bg-background'
+                     className='px-3 py-2 border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary'
                   >
                      <option value='all'>All Permissions</option>
                      <option value='view'>View Only</option>
@@ -169,7 +171,7 @@ const SharedPage: FC = () => {
                   <select
                      value={sortBy}
                      onChange={(e) => setSortBy(e.target.value as any)}
-                     className='px-3 py-2 border rounded-lg bg-background'
+                     className='px-3 py-2 border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary'
                   >
                      <option value='recent'>Recently Shared</option>
                      <option value='name'>Name</option>
@@ -177,12 +179,12 @@ const SharedPage: FC = () => {
                   </select>
 
                   {/* View mode toggle */}
-                  <div className='flex border rounded-lg'>
+                  <div className='flex border rounded-lg overflow-hidden'>
                      <Button
                         variant={viewMode === "grid" ? "default" : "ghost"}
                         size='sm'
                         onClick={() => setViewMode("grid")}
-                        className='rounded-r-none'
+                        className='rounded-none border-none'
                      >
                         <Grid3X3 size={16} />
                      </Button>
@@ -190,7 +192,7 @@ const SharedPage: FC = () => {
                         variant={viewMode === "list" ? "default" : "ghost"}
                         size='sm'
                         onClick={() => setViewMode("list")}
-                        className='rounded-l-none border-l'
+                        className='rounded-none border-l'
                      >
                         <List size={16} />
                      </Button>
@@ -201,118 +203,104 @@ const SharedPage: FC = () => {
 
          {/* Empty state */}
          {filteredDocuments.length === 0 && (
-            <div className='text-center py-16'>
-               <div className='mb-6'>
-                  <Share2
-                     size={64}
-                     className='mx-auto text-muted-foreground opacity-50'
-                  />
-               </div>
-               <h3 className='text-xl font-semibold mb-2'>
-                  No Shared Documents
-               </h3>
-               <p className='text-muted-foreground mb-6 max-w-md mx-auto'>
-                  You don't have any documents shared with you yet. When someone
-                  shares a document with you, it will appear here.
-               </p>
-               <div className='flex flex-col sm:flex-row gap-3 justify-center'>
-                  <Button
-                     variant='default'
-                     onClick={() => (window.location.href = "/documents")}
-                  >
-                     <Search size={16} className='mr-2' />
-                     Browse Your Documents
-                  </Button>
-                  <Button
-                     variant='outline'
-                     onClick={() => (window.location.href = "/search")}
-                  >
-                     <Search size={16} className='mr-2' />
-                     Search All Documents
-                  </Button>
+            <div className='flex items-center justify-center py-20'>
+               <div className='text-center max-w-md'>
+                  <div className='inline-flex items-center justify-center w-20 h-20 bg-muted rounded-full mb-6'>
+                     <Share2 size={40} className='text-muted-foreground' />
+                  </div>
+                  <h3 className='text-2xl font-semibold mb-3'>
+                     No Shared Documents
+                  </h3>
+                  <p className='text-muted-foreground mb-8 leading-relaxed'>
+                     You don't have any documents shared with you yet. When
+                     someone shares a document with you, it will appear here.
+                  </p>
+                  <div className='flex flex-col sm:flex-row gap-3 justify-center'>
+                     <Button
+                        variant='default'
+                        onClick={() => (window.location.href = "/documents")}
+                     >
+                        <Search size={16} className='mr-2' />
+                        Browse Your Documents
+                     </Button>
+                     <Button
+                        variant='outline'
+                        onClick={() => (window.location.href = "/search")}
+                     >
+                        <Search size={16} className='mr-2' />
+                        Search All Documents
+                     </Button>
+                  </div>
                </div>
             </div>
          )}
 
          {/* Shared Documents */}
          {filteredDocuments.length > 0 && (
-            <>
+            <div className='space-y-6'>
                {/* Quick stats */}
-               <div className='grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6'>
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <Share2 size={20} className='text-blue-500' />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {sharedDocuments.length}
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              Total Shared
-                           </p>
+               <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-blue-500/10 rounded-lg'>
+                           <Share2 size={20} className='text-blue-500' />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {sharedDocuments.length}
+                     </p>
+                     <p className='text-sm text-muted-foreground'>
+                        Total Shared
+                     </p>
                   </div>
 
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <Eye size={20} className='text-green-500' />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {
-                                 sharedDocuments.filter(
-                                    (d) => d.shareCount <= 2
-                                 ).length
-                              }
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              View Only
-                           </p>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-green-500/10 rounded-lg'>
+                           <Eye size={20} className='text-green-500' />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {
+                           sharedDocuments.filter((d) => d.shareCount <= 2)
+                              .length
+                        }
+                     </p>
+                     <p className='text-sm text-muted-foreground'>View Only</p>
                   </div>
 
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <Edit size={20} className='text-purple-500' />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {
-                                 sharedDocuments.filter((d) => d.shareCount > 2)
-                                    .length
-                              }
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              Can Edit
-                           </p>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-purple-500/10 rounded-lg'>
+                           <Edit size={20} className='text-purple-500' />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {sharedDocuments.filter((d) => d.shareCount > 2).length}
+                     </p>
+                     <p className='text-sm text-muted-foreground'>Can Edit</p>
                   </div>
 
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <UserCheck size={20} className='text-orange-500' />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {
-                                 new Set(sharedDocuments.map((d) => d.ownerId))
-                                    .size
-                              }
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              Sharers
-                           </p>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-orange-500/10 rounded-lg'>
+                           <UserCheck size={20} className='text-orange-500' />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {new Set(sharedDocuments.map((d) => d.ownerId)).size}
+                     </p>
+                     <p className='text-sm text-muted-foreground'>Sharers</p>
                   </div>
                </div>
 
                {/* Documents Grid/List */}
                <div
                   className={cn(
-                     "grid gap-4",
+                     "grid gap-6",
                      viewMode === "grid"
                         ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                        : "grid-cols-1 max-w-4xl"
+                        : "grid-cols-1 max-w-4xl mx-auto"
                   )}
                >
                   {sortedDocuments.map((document) => {
@@ -320,23 +308,15 @@ const SharedPage: FC = () => {
 
                      return (
                         <div key={document.id} className='relative group'>
-                           <DocumentCard
-                              document={document}
-                              onView={handleView}
-                              onDownload={handleDownload}
-                              onShare={handleShare}
-                              onDelete={() => {}} // Shared docs can't be deleted by viewers
-                              onVerify={() => {}}
-                           />
-
-                           {/* Permission badge */}
-                           <div className='absolute top-2 left-2 z-10'>
+                           {/* Permission badge - positioned outside card */}
+                           <div className='absolute -top-2 -left-2 z-20'>
                               <Badge
                                  variant={
                                     userPermission === "edit"
                                        ? "default"
                                        : "secondary"
                                  }
+                                 className='shadow-md'
                               >
                                  {userPermission === "edit" ? (
                                     <>
@@ -350,33 +330,59 @@ const SharedPage: FC = () => {
                               </Badge>
                            </div>
 
+                           <DocumentCard
+                              document={document}
+                              onView={handleView}
+                              onDownload={handleDownload}
+                              onShare={handleShare}
+                              onDelete={() => {}} // Shared docs can't be deleted by viewers
+                              onVerify={() => {}}
+                           />
+
                            {/* Quick actions */}
-                           <div className='absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1'>
+                           <div className='absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1.5'>
                               <Button
                                  variant='secondary'
                                  size='sm'
-                                 onClick={() => handleCopyLink(document.id)}
-                                 className='h-8 w-8 p-0'
+                                 onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCopyLink(document.id);
+                                 }}
+                                 className='h-8 w-8 p-0 shadow-md'
+                                 title='Copy link'
                               >
-                                 <Copy size={12} />
+                                 <Copy size={14} />
                               </Button>
 
                               {userPermission === "edit" && (
                                  <Button
                                     variant='default'
                                     size='sm'
-                                    onClick={() => handleEdit(document.id)}
-                                    className='h-8 w-8 p-0'
+                                    onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleEdit(document.id);
+                                    }}
+                                    className='h-8 w-8 p-0 shadow-md'
+                                    title='Edit document'
                                  >
-                                    <Edit size={12} />
+                                    <Edit size={14} />
                                  </Button>
                               )}
                            </div>
 
                            {/* Owner info */}
-                           <div className='absolute bottom-2 left-2 z-10'>
-                              <div className='bg-black/70 text-white text-xs px-2 py-1 rounded backdrop-blur-sm'>
-                                 Shared by {document.owner.name}
+                           <div className='absolute bottom-2 left-2 right-2 z-10'>
+                              <div className='bg-background/95 backdrop-blur-sm border text-xs px-3 py-1.5 rounded-lg flex items-center gap-2'>
+                                 <Users
+                                    size={12}
+                                    className='text-muted-foreground'
+                                 />
+                                 <span className='text-muted-foreground truncate'>
+                                    Shared by{" "}
+                                    <span className='font-medium text-foreground'>
+                                       {document.owner.name}
+                                    </span>
+                                 </span>
                               </div>
                            </div>
                         </div>
@@ -385,8 +391,8 @@ const SharedPage: FC = () => {
                </div>
 
                {/* Bottom actions */}
-               <div className='flex justify-center mt-8 pt-6 border-t'>
-                  <div className='flex gap-3'>
+               <div className='flex justify-center pt-8 border-t'>
+                  <div className='flex flex-wrap gap-3 justify-center'>
                      <Button
                         variant='outline'
                         onClick={() => (window.location.href = "/documents")}
@@ -401,7 +407,7 @@ const SharedPage: FC = () => {
                         Search
                      </Button>
                      <Button
-                        variant='outline'
+                        variant='default'
                         onClick={() => (window.location.href = "/share/create")}
                      >
                         <Share2 size={16} className='mr-2' />
@@ -409,7 +415,7 @@ const SharedPage: FC = () => {
                      </Button>
                   </div>
                </div>
-            </>
+            </div>
          )}
       </div>
    );

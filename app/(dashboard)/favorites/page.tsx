@@ -91,20 +91,22 @@ const FavoritesPage: FC = () => {
    }
 
    return (
-      <div className='container mx-auto p-6'>
+      <div className='container mx-auto p-6 space-y-6'>
          {/* Header */}
-         <div className='flex items-center justify-between mb-6'>
-            <div className='flex items-center gap-3'>
-               <div className='p-2 bg-yellow-500/10 rounded-lg'>
+         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
+            <div className='flex items-center gap-4'>
+               <div className='p-3 bg-yellow-500/10 rounded-xl'>
                   <Star
-                     size={24}
+                     size={28}
                      className='text-yellow-500'
                      fill='currentColor'
                   />
                </div>
                <div>
-                  <h1 className='text-3xl font-bold'>Favorites</h1>
-                  <p className='text-muted-foreground'>
+                  <h1 className='text-3xl font-bold tracking-tight'>
+                     Favorites
+                  </h1>
+                  <p className='text-sm text-muted-foreground mt-1'>
                      {favoriteDocuments.length} document
                      {favoriteDocuments.length !== 1 ? "s" : ""} marked as
                      favorite
@@ -113,12 +115,12 @@ const FavoritesPage: FC = () => {
             </div>
 
             {favoriteDocuments.length > 0 && (
-               <div className='flex items-center gap-2'>
+               <div className='flex items-center gap-2 flex-wrap'>
                   {/* Sort dropdown */}
                   <select
                      value={sortBy}
                      onChange={(e) => setSortBy(e.target.value as any)}
-                     className='px-3 py-2 border rounded-lg bg-background'
+                     className='px-3 py-2 border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary'
                   >
                      <option value='recent'>Recently Modified</option>
                      <option value='name'>Name</option>
@@ -126,12 +128,12 @@ const FavoritesPage: FC = () => {
                   </select>
 
                   {/* View mode toggle */}
-                  <div className='flex border rounded-lg'>
+                  <div className='flex border rounded-lg overflow-hidden'>
                      <Button
                         variant={viewMode === "grid" ? "default" : "ghost"}
                         size='sm'
                         onClick={() => setViewMode("grid")}
-                        className='rounded-r-none'
+                        className='rounded-none border-none'
                      >
                         <Grid3X3 size={16} />
                      </Button>
@@ -139,7 +141,7 @@ const FavoritesPage: FC = () => {
                         variant={viewMode === "list" ? "default" : "ghost"}
                         size='sm'
                         onClick={() => setViewMode("list")}
-                        className='rounded-l-none border-l'
+                        className='rounded-none border-l'
                      >
                         <List size={16} />
                      </Button>
@@ -150,110 +152,115 @@ const FavoritesPage: FC = () => {
 
          {/* Empty state */}
          {favoriteDocuments.length === 0 && (
-            <div className='text-center py-16'>
-               <div className='mb-6'>
-                  <Star
-                     size={64}
-                     className='mx-auto text-muted-foreground opacity-50'
-                  />
-               </div>
-               <h3 className='text-xl font-semibold mb-2'>No Favorites Yet</h3>
-               <p className='text-muted-foreground mb-6 max-w-md mx-auto'>
-                  Start building your favorites collection by clicking the star
-                  icon on any document you want to access quickly.
-               </p>
-               <div className='flex flex-col sm:flex-row gap-3 justify-center'>
-                  <Button
-                     variant='default'
-                     onClick={() => (window.location.href = "/documents")}
-                  >
-                     <Search size={16} className='mr-2' />
-                     Browse Documents
-                  </Button>
-                  <Button
-                     variant='outline'
-                     onClick={() => (window.location.href = "/search")}
-                  >
-                     <Search size={16} className='mr-2' />
-                     Search Documents
-                  </Button>
+            <div className='flex items-center justify-center py-20'>
+               <div className='text-center max-w-md'>
+                  <div className='inline-flex items-center justify-center w-20 h-20 bg-muted rounded-full mb-6'>
+                     <Star size={40} className='text-muted-foreground' />
+                  </div>
+                  <h3 className='text-2xl font-semibold mb-3'>
+                     No Favorites Yet
+                  </h3>
+                  <p className='text-muted-foreground mb-8 leading-relaxed'>
+                     Start building your favorites collection by clicking the
+                     star icon on any document you want to access quickly.
+                  </p>
+                  <div className='flex flex-col sm:flex-row gap-3 justify-center'>
+                     <Button
+                        variant='default'
+                        onClick={() => (window.location.href = "/documents")}
+                     >
+                        <Search size={16} className='mr-2' />
+                        Browse Documents
+                     </Button>
+                     <Button
+                        variant='outline'
+                        onClick={() => (window.location.href = "/search")}
+                     >
+                        <Search size={16} className='mr-2' />
+                        Search Documents
+                     </Button>
+                  </div>
                </div>
             </div>
          )}
 
          {/* Favorites Grid/List */}
          {favoriteDocuments.length > 0 && (
-            <>
+            <div className='space-y-6'>
                {/* Quick stats */}
-               <div className='grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6'>
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <Star
-                           size={20}
-                           className='text-yellow-500'
-                           fill='currentColor'
-                        />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {favoriteDocuments.length}
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              Favorites
-                           </p>
+               <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-yellow-500/10 rounded-lg'>
+                           <Star
+                              size={20}
+                              className='text-yellow-500'
+                              fill='currentColor'
+                           />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {favoriteDocuments.length}
+                     </p>
+                     <p className='text-sm text-muted-foreground'>Favorites</p>
                   </div>
 
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <Heart size={20} className='text-red-500' />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {
-                                 favoriteDocuments.filter(
-                                    (d) => d.blockchainVerified
-                                 ).length
-                              }
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              Verified
-                           </p>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-red-500/10 rounded-lg'>
+                           <Heart size={20} className='text-red-500' />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {
+                           favoriteDocuments.filter((d) => d.blockchainVerified)
+                              .length
+                        }
+                     </p>
+                     <p className='text-sm text-muted-foreground'>Verified</p>
                   </div>
 
-                  <div className='bg-card border rounded-lg p-4'>
-                     <div className='flex items-center gap-3'>
-                        <SortAsc size={20} className='text-blue-500' />
-                        <div>
-                           <p className='text-2xl font-bold'>
-                              {Math.round(
-                                 favoriteDocuments.reduce(
-                                    (sum, d) => sum + d.fileSize,
-                                    0
-                                 ) / 1048576
-                              )}
-                              MB
-                           </p>
-                           <p className='text-sm text-muted-foreground'>
-                              Total Size
-                           </p>
+                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
+                     <div className='flex items-start justify-between mb-3'>
+                        <div className='p-2.5 bg-blue-500/10 rounded-lg'>
+                           <SortAsc size={20} className='text-blue-500' />
                         </div>
                      </div>
+                     <p className='text-3xl font-bold mb-1'>
+                        {Math.round(
+                           favoriteDocuments.reduce(
+                              (sum, d) => sum + d.fileSize,
+                              0
+                           ) / 1048576
+                        )}
+                        MB
+                     </p>
+                     <p className='text-sm text-muted-foreground'>Total Size</p>
                   </div>
                </div>
 
                {/* Documents */}
                <div
                   className={cn(
-                     "grid gap-4",
+                     "grid gap-6",
                      viewMode === "grid"
                         ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                        : "grid-cols-1 max-w-4xl"
+                        : "grid-cols-1 max-w-4xl mx-auto"
                   )}
                >
                   {sortedFavorites.map((document) => (
                      <div key={document.id} className='relative group'>
+                        {/* Favorite indicator overlay */}
+                        <div className='absolute -top-2 -left-2 z-20'>
+                           <div className='p-1.5 bg-yellow-500 rounded-full shadow-md'>
+                              <Star
+                                 size={14}
+                                 className='text-white'
+                                 fill='currentColor'
+                              />
+                           </div>
+                        </div>
+
                         <DocumentCard
                            document={document}
                            onView={handleView}
@@ -263,25 +270,15 @@ const FavoritesPage: FC = () => {
                            onVerify={handleVerify}
                         />
 
-                        {/* Favorite indicator overlay */}
-                        <div className='absolute top-2 left-2 z-10'>
-                           <div className='p-1.5 bg-yellow-500 rounded-full shadow-lg'>
-                              <Star
-                                 size={12}
-                                 className='text-white'
-                                 fill='currentColor'
-                              />
-                           </div>
-                        </div>
-
                         {/* Remove from favorites button (on hover) */}
                         <Button
                            variant='destructive'
                            size='sm'
-                           onClick={() =>
-                              handleRemoveFromFavorites(document.id)
-                           }
-                           className='absolute top-2 right-12 z-10 opacity-0 group-hover:opacity-100 transition-opacity'
+                           onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveFromFavorites(document.id);
+                           }}
+                           className='absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity h-8 px-3'
                         >
                            Remove
                         </Button>
@@ -290,8 +287,8 @@ const FavoritesPage: FC = () => {
                </div>
 
                {/* Bottom actions */}
-               <div className='flex justify-center mt-8 pt-6 border-t'>
-                  <div className='flex gap-3'>
+               <div className='flex justify-center pt-8 border-t'>
+                  <div className='flex flex-wrap gap-3 justify-center'>
                      <Button
                         variant='outline'
                         onClick={() => (window.location.href = "/documents")}
@@ -307,7 +304,7 @@ const FavoritesPage: FC = () => {
                      </Button>
                   </div>
                </div>
-            </>
+            </div>
          )}
       </div>
    );
