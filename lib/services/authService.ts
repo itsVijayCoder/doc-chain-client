@@ -37,19 +37,22 @@ const MOCK_USERS = {
    },
 };
 
-// Check if we're in development mode and should use mock authentication
+// Check if we're in development mode or demo mode and should use mock authentication
 const shouldUseMockAuth = () => {
    // Check both client and server side
    if (typeof window !== "undefined") {
       // Client side - check environment variable or default to true in development
       return (
-         process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false" &&
-         process.env.NODE_ENV === "development"
+         process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true" ||
+         process.env.NEXT_PUBLIC_DEMO_MODE === "true" ||
+         (process.env.NEXT_PUBLIC_USE_MOCK_AUTH !== "false" &&
+            process.env.NODE_ENV === "development")
       );
    }
    // Server side
    return (
       process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true" ||
+      process.env.NEXT_PUBLIC_DEMO_MODE === "true" ||
       process.env.NODE_ENV === "development"
    );
 };

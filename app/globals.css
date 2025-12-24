@@ -311,6 +311,18 @@
       }
    }
 
+   @keyframes gradient {
+      0% {
+         background-position: 0% 50%;
+      }
+      50% {
+         background-position: 100% 50%;
+      }
+      100% {
+         background-position: 0% 50%;
+      }
+   }
+
    .animate-blockchain-pulse {
       animation: blockchain-pulse 2s ease-in-out infinite;
    }
@@ -321,5 +333,9 @@
 
    .animate-ai-thinking {
       animation: ai-thinking 1.5s ease-in-out infinite;
+   }
+
+   .animate-gradient {
+      animation: gradient 3s ease infinite;
    }
 }

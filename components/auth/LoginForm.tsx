@@ -213,11 +213,14 @@ export const LoginForm: FC = () => {
             )}
          </Button>
 
-         {/* Test Credentials Info (Development Only) */}
-         {process.env.NODE_ENV === "development" && (
+         {/* Demo Credentials Info */}
+         {(process.env.NODE_ENV === "development" ||
+            process.env.NEXT_PUBLIC_DEMO_MODE === "true") && (
             <div className='p-4 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 space-y-2'>
                <p className='text-xs font-semibold text-muted-foreground text-center'>
-                  🧪 Test Credentials (Dev Only)
+                  {process.env.NEXT_PUBLIC_DEMO_MODE === "true"
+                     ? "🎭 Demo Credentials"
+                     : "🧪 Test Credentials (Dev Only)"}
                </p>
                <div className='grid gap-2 text-xs'>
                   <div className='flex justify-between items-center p-2 rounded bg-background/50'>
