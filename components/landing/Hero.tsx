@@ -131,7 +131,7 @@ export function Hero() {
                      size='lg'
                      className='text-lg px-10 h-14 rounded-full shadow-xl shadow-primary/20 hover:shadow-2xl hover:shadow-primary/30 transition-all font-semibold group'
                   >
-                     <Link href='/register'>
+                     <Link href='/register' className='flex items-center'>
                         Start Free Trial
                         <ArrowRight className='ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform' />
                      </Link>

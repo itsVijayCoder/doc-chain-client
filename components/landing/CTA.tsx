@@ -79,7 +79,7 @@ export function CTA() {
                            size='lg'
                            className='rounded-full text-base px-8 h-14 shadow-2xl shadow-primary/30 hover:shadow-primary/50 transition-all duration-300 bg-linear-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90'
                         >
-                           <Link href='/register'>
+                           <Link href='/register' className='flex items-center'>
                               Start Free Trial
                               <ArrowRight className='ml-2 w-5 h-5' />
                            </Link>

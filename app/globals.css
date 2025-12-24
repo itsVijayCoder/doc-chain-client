@@ -220,6 +220,11 @@
    body {
       @apply bg-background text-foreground;
    }
+
+   /* Container customization */
+   .container {
+      @apply mx-auto max-w-screen-2xl;
+   }
 }
 
 @layer utilities {
