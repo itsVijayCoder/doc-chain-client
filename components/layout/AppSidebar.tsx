@@ -23,6 +23,7 @@ import {
    Settings,
    User,
    Sliders,
+   LayoutDashboard,
    ChevronLeft,
    ChevronRight,
 } from "lucide-react";
@@ -41,6 +42,7 @@ const iconMap = {
    Settings,
    User,
    Sliders,
+   LayoutDashboard,
 };
 
 export const AppSidebar: FC = () => {

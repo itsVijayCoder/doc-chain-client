@@ -27,7 +27,8 @@ export const ROUTES = {
    SETTINGS_PREFERENCES: "/settings/preferences",
 
    // Admin
-   ADMIN_DASHBOARD: "/admin/dashboard",
+   ADMIN: "/admin",
+   ADMIN_DASHBOARD: "/admin-dashboard",
    ADMIN_USERS: "/admin/users",
    ADMIN_SECURITY: "/admin/security",
    ADMIN_BLOCKCHAIN: "/admin/blockchain",
@@ -74,6 +75,12 @@ export const NAVIGATION = {
       },
    ],
    admin: [
+      {
+         icon: "LayoutDashboard",
+         label: "Overview",
+         href: ROUTES.ADMIN,
+         roles: ["admin"] as const,
+      },
       {
          icon: "Users",
          label: "Users",
@@ -129,6 +136,7 @@ export const PUBLIC_ROUTES = [
 ];
 
 export const ADMIN_ROUTES = [
+   ROUTES.ADMIN,
    ROUTES.ADMIN_DASHBOARD,
    ROUTES.ADMIN_USERS,
    ROUTES.ADMIN_SECURITY,
