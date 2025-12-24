@@ -24,7 +24,7 @@ export default function RootLayout({
    children: React.ReactNode;
 }>) {
    return (
-      <html lang='en' className={inter.variable}>
+      <html lang='en' suppressHydrationWarning>
          <body
             className={`font-poppins ${poppins.variable} ${inter.variable} antialiased`}
          >

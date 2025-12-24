@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { NAVIGATION } from "@/lib/constants";
 import { hasRole } from "@/lib/utils/permissions";
 import { SidebarLink } from "./SidebarLink";
+import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -199,8 +200,9 @@ export const AppSidebar: FC = () => {
                   ))}
                </nav>
 
-               {/* Collapse Button */}
-               <div className='p-2 border-t'>
+               {/* Theme Toggle & Collapse Button */}
+               <div className='p-2 border-t space-y-1'>
+                  <ThemeToggle collapsed={sidebarCollapsed} />
                   <Button
                      variant='ghost'
                      size='sm'

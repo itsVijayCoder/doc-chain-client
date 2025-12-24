@@ -55,7 +55,7 @@ export const ProfileDropdown: FC = () => {
             <ChevronDown size={16} className='text-muted-foreground' />
          </DropdownMenuTrigger>
          <DropdownMenuContent className='w-64' align='end'>
-            <DropdownMenuLabel>
+            <div className='px-2 py-1.5'>
                <div className='flex items-center gap-3'>
                   <Avatar className='h-12 w-12'>
                      <AvatarImage src={user.avatar} alt={user.name} />
@@ -74,7 +74,7 @@ export const ProfileDropdown: FC = () => {
                      </Badge>
                   </div>
                </div>
-            </DropdownMenuLabel>
+            </div>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                <DropdownMenuItem
@@ -98,7 +98,7 @@ export const ProfileDropdown: FC = () => {
             <DropdownMenuItem
                onClick={handleLogout}
                disabled={isLoading}
-               className='text-(--error) focus:text-(--error)'
+               className='text-destructive focus:text-destructive'
             >
                <LogOut size={16} className='mr-2' />
                Logout

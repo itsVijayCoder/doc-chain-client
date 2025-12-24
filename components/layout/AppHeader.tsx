@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SearchBar } from "./SearchBar";
 import { NotificationBell } from "./NotificationBell";
 import { ProfileDropdown } from "./ProfileDropdown";
+import { ThemeToggle } from "./ThemeToggle";
 import { Menu, Search as SearchIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,11 @@ export const AppHeader: FC = () => {
                <Button variant='ghost' size='icon' className='md:hidden'>
                   <SearchIcon size={20} />
                </Button>
+
+               {/* Theme Toggle */}
+               <div className='hidden sm:block'>
+                  <ThemeToggle iconOnly />
+               </div>
 
                {/* Notifications */}
                <NotificationBell />
