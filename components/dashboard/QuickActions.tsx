@@ -34,7 +34,7 @@ export const QuickActions: FC<QuickActionsProps> = ({ actions }) => {
          label: "Upload Document",
          description: "Upload new files",
          onClick: () => router.push("/documents?action=upload"),
-         variant: "default",
+         variant: "outline",
       },
       {
          icon: <FolderPlus size={20} />,
