@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { NAVIGATION } from "@/lib/constants";
 import { hasRole } from "@/lib/utils/permissions";
 import { useMyPermissions } from "@/lib/hooks/useMyPermissions";
+import { useEnabledModules } from "@/lib/hooks/useEnabledModules";
+import type { NavItem } from "@/modules/types";
 import {
    Archive,
    Home,
@@ -29,6 +31,8 @@ import {
    Box,
    Activity,
    Droplet,
+   Bookmark,
+   FolderHeart,
 } from "lucide-react";
 
 const iconMap = {
@@ -52,15 +56,12 @@ const iconMap = {
    Box,
    Activity,
    Droplet,
+   Bookmark,
+   FolderHeart,
 };
 
-type NavItem = {
-   icon: string;
-   label: string;
-   href: string;
-   roles?: readonly string[];
-   permission?: string;
-};
+// NavItem comes from @/modules/types so core and module-contributed nav
+// items share one shape and flow through the same filter/sort pipeline.
 
 // Collapsed rail is 56px (w-14); expands to 232px on hover. Using group-hover
 // (not React state) keeps the interaction on the GPU-accelerated path — no
@@ -78,16 +79,45 @@ export const AppSidebar: FC = () => {
    const filterNav = (items: readonly NavItem[]) => {
       if (!user) return [];
       return items.filter((item) => {
-         if (!item.roles || item.roles[0] === "all") return true;
-         const roleOk = hasRole(user.role, [...item.roles]);
-         if (!roleOk) return false;
-         if (item.permission) return can(item.permission);
+         // Role check — "all" means anyone authenticated. Items without
+         // `roles` also pass this stage.
+         const rolesOk =
+            !item.roles ||
+            item.roles[0] === "all" ||
+            hasRole(user.role, [...item.roles]);
+         if (!rolesOk) return false;
+         // Permission check applies independently of roles. Previous
+         // implementation skipped this when roles=["all"], which meant
+         // module items with `roles: ["all"] + permission: "x.y"` never
+         // had their permission consulted. The new flow runs both gates
+         // in sequence.
+         if (item.permission && !can(item.permission)) return false;
          return true;
       });
    };
 
-   const mainNav = filterNav(NAVIGATION.main);
-   const adminNav = filterNav(NAVIGATION.admin);
+   // Gather nav items contributed by active plugins. `useEnabledModules`
+   // already filters against /system/modules, so anything here is both
+   // bundled AND backend-active. Sorted by optional `order` for deterministic
+   // position in the section; ties break to declaration order.
+   const enabledModules = useEnabledModules();
+   const moduleMain: NavItem[] = [];
+   const moduleAdmin: NavItem[] = [];
+   for (const mod of enabledModules) {
+      for (const item of mod.navItems ?? []) moduleMain.push(item);
+      for (const item of mod.adminNavItems ?? []) moduleAdmin.push(item);
+   }
+   const byOrder = (a: NavItem, b: NavItem) =>
+      (a.order ?? 0) - (b.order ?? 0);
+
+   const mainNav = [
+      ...filterNav(NAVIGATION.main),
+      ...filterNav(moduleMain).sort(byOrder),
+   ];
+   const adminNav = [
+      ...filterNav(NAVIGATION.admin),
+      ...filterNav(moduleAdmin).sort(byOrder),
+   ];
    const settingsNav = filterNav(NAVIGATION.settings);
 
    const initials = user
