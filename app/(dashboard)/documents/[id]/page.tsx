@@ -2,17 +2,33 @@
 
 import { FC, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useDocumentStore } from "@/lib/stores/documentStore";
+import {
+   useArchiveDocument,
+   useDocument,
+   useSoftDeleteDocument,
+   useUnarchiveDocument,
+} from "@/lib/hooks/useDocuments";
+import { useTrackRecentDocument } from "@/lib/hooks/useRecentDocuments";
+import {
+   useCachedVerification,
+   useVerifyDocument,
+} from "@/lib/hooks/useBlockchain";
+import { documentService } from "@/lib/services/documentService";
 import { useToast } from "@/lib/hooks/useToast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+   Archive,
+   ArchiveRestore,
    ArrowLeft,
+   CheckCircle2,
    Download,
+   Settings,
    Share2,
    Trash2,
    Shield,
+   ShieldAlert,
    Lock,
    File,
    Clock,
@@ -20,247 +36,528 @@ import {
    Tag,
    MessageSquare,
    History,
+   XCircle,
 } from "lucide-react";
 import { formatBytes, formatRelativeTime } from "@/lib/utils/format";
-import { ShareDocument } from "@/components/documents/sharing/ShareDocument";
-import { User as UserType } from "@/lib/types/user";
-import { PermissionLevel } from "@/components/documents/sharing/PermissionSelector";
-import { ShareLinkSettings } from "@/components/documents/sharing/ShareLinkGenerator";
+import { cn } from "@/lib/utils";
+import {
+   ConfidentialIndicator,
+   DcButton,
+   VerifiedBadge,
+} from "@/components/design/primitives";
+import { useTrackedDownload } from "@/components/documents/TrackedDownloadDialog";
+import { DocumentSettingsDialog } from "@/components/documents/DocumentSettingsDialog";
+import dynamic from "next/dynamic";
+import { ShareLinksPanel } from "@/components/documents/sharing/ShareLinksPanel";
+import { PermissionsPanel } from "@/components/documents/sharing/PermissionsPanel";
+import { DocumentViewer } from "@/components/documents/DocumentViewer";
 
-// Mock users for sharing (will be replaced with real API)
-const MOCK_USERS: UserType[] = [
+const CommentsPanel = dynamic(
+   () => import("@/components/documents/CommentsPanel"),
    {
-      id: "user-1",
-      email: "john.doe@example.com",
-      name: "John Doe",
-      role: "editor",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      mfaEnabled: false,
-      isActive: true,
-   },
-   {
-      id: "user-2",
-      email: "jane.smith@example.com",
-      name: "Jane Smith",
-      role: "viewer",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      mfaEnabled: false,
-      isActive: true,
-   },
-   {
-      id: "user-3",
-      email: "bob.johnson@example.com",
-      name: "Bob Johnson",
-      role: "admin",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      mfaEnabled: false,
-      isActive: true,
-   },
-];
+      ssr: false,
+      loading: () => (
+         <div className='p-8 text-center text-sm text-muted-foreground'>
+            Loading comments…
+         </div>
+      ),
+   }
+);
 
-/**
- * DocumentDetailPage Component
- * Displays detailed information about a single document
- * Follows Single Responsibility Principle - focuses on document detail display
- */
+const DocumentContentViewer = dynamic(
+   () => import("@/components/documents/viewers/DocumentContentViewer"),
+   {
+      ssr: false,
+      loading: () => (
+         <div className='p-12 text-center text-sm text-muted-foreground'>
+            Loading content…
+         </div>
+      ),
+   }
+);
+import type { ApiError } from "@/lib/types";
+
 const DocumentDetailPage: FC = () => {
    const router = useRouter();
    const params = useParams();
    const searchParams = useSearchParams();
    const toast = useToast();
    const documentId = params.id as string;
-   const activeTab = searchParams.get("tab") || "details";
+   // Old links used `?tab=details`; coerce them to the new Preview tab so
+   // bookmarks don't break.
+   const rawTab = searchParams.get("tab") || "preview";
+   const activeTab = rawTab === "details" ? "preview" : rawTab;
 
-   const {
-      currentDocument: document,
-      versions,
-      comments,
-      shares,
-      isLoading,
-      fetchDocument,
-      fetchVersions,
-      fetchComments,
-      fetchShares,
-      deleteDocument,
-      verifyBlockchain,
-      shareDocument,
-      removeShare,
-      generateShareLink,
-   } = useDocumentStore();
+   // Real data — document + versions via TanStack.
+   const docQuery = useDocument(documentId);
+   const doc = docQuery.data?.document;
+   const versions = docQuery.data?.versions ?? [];
 
-   const [isDeleting, setIsDeleting] = useState(false);
-
-   // Fetch document data
+   // Push this doc onto the "recently opened" list in localStorage once the
+   // title is known — feeds the command bar's Recent section. Dedup by id
+   // is handled inside the hook.
+   const trackRecent = useTrackRecentDocument();
    useEffect(() => {
-      if (documentId) {
-         fetchDocument(documentId);
-         fetchVersions(documentId);
-         fetchComments(documentId);
-         fetchShares(documentId);
-      }
-   }, [documentId, fetchDocument, fetchVersions, fetchComments, fetchShares]);
+      if (!doc) return;
+      trackRecent({ id: doc.id, title: doc.title, mimeType: doc.mimeType });
+   }, [doc, trackRecent]);
 
-   // Handle document download
-   const handleDownload = () => {
-      if (document?.downloadUrl) {
-         window.open(document.downloadUrl, "_blank");
+   const [isDownloading, setIsDownloading] = useState(false);
+   const [settingsOpen, setSettingsOpen] = useState(false);
+   const deleteMutation = useSoftDeleteDocument();
+   const archiveMutation = useArchiveDocument();
+   const unarchiveMutation = useUnarchiveDocument();
+   const verifyMutation = useVerifyDocument();
+   const cachedVerify = useCachedVerification(documentId);
+   // Frontend-only awareness gate for confidential downloads. Backend
+   // always watermarks; this dialog tells the user before the file hits
+   // their disk. `confirm()` resolves false on cancel/ESC/overlay click.
+   const { dialog: trackedDialog, confirm: confirmTrackedDownload } =
+      useTrackedDownload();
+
+   const handleDownload = async () => {
+      if (!doc) return;
+      if (doc.isConfidential) {
+         const ok = await confirmTrackedDownload({
+            kind: "single",
+            title: doc.title,
+         });
+         if (!ok) return;
+      }
+      setIsDownloading(true);
+      try {
+         await documentService.downloadCurrent(doc.id, doc.title);
          toast.success("Download started");
-      } else {
-         toast.error("Download failed", "Download URL not available");
+      } catch (err) {
+         const apiErr = err as ApiError;
+         toast.error(
+            "Download failed",
+            apiErr?.message ?? "Could not fetch the file"
+         );
+      } finally {
+         setIsDownloading(false);
       }
    };
 
-   // Handle document share
+   const handleDownloadVersion = async (versionNumber: number) => {
+      if (!doc) return;
+      if (doc.isConfidential) {
+         const ok = await confirmTrackedDownload({
+            kind: "single",
+            title: `${doc.title} (v${versionNumber})`,
+         });
+         if (!ok) return;
+      }
+      try {
+         await documentService.downloadVersion(doc.id, versionNumber, doc.title);
+         toast.success(`Version ${versionNumber} downloaded`);
+      } catch (err) {
+         const apiErr = err as ApiError;
+         toast.error(
+            "Download failed",
+            apiErr?.message ?? "Could not fetch this version"
+         );
+      }
+   };
+
    const handleShare = () => {
-      // Navigate to share tab
       router.push(`/documents/${documentId}?tab=share`);
    };
 
-   // Handle document delete
    const handleDelete = async () => {
-      if (!document) return;
-
-      if (confirm("Are you sure you want to delete this document?")) {
-         setIsDeleting(true);
-         try {
-            await deleteDocument(document.id);
-            toast.success("Document deleted");
-            router.push("/documents");
-         } catch (error: any) {
-            toast.error("Delete failed", error.message);
-            setIsDeleting(false);
-         }
-      }
-   };
-
-   // Handle blockchain verification
-   const handleVerify = async () => {
-      if (!document) return;
-
+      if (!doc) return;
+      if (!window.confirm(`Move "${doc.title}" to trash?`)) return;
       try {
-         await verifyBlockchain(document.id);
-         toast.success(
-            "Verification started",
-            "Document is being verified on blockchain"
+         await deleteMutation.mutateAsync(doc.id);
+         toast.success("Moved to trash");
+         router.push("/documents");
+      } catch (err) {
+         const apiErr = err as ApiError;
+         toast.error(
+            "Delete failed",
+            apiErr?.details?.[0] ?? apiErr?.message ?? "Try again"
          );
-      } catch (error: any) {
-         toast.error("Verification failed", error.message);
       }
    };
 
-   if (isLoading) {
+   const handleVerify = async () => {
+      if (!doc) return;
+      try {
+         const result = await verifyMutation.mutateAsync(doc.id);
+         if (result.verified) {
+            toast.success(
+               "Verified on blockchain",
+               result.message || "File hash matches the on-chain record"
+            );
+         } else {
+            toast.error(
+               "Verification failed",
+               result.message || "On-chain hash does not match the file"
+            );
+         }
+      } catch (err) {
+         const apiErr = err as ApiError;
+         if (apiErr?.code === "BLOCKCHAIN_RECORD_NOT_FOUND") {
+            toast.error(
+               "Not anchored yet",
+               "This document has no blockchain record yet. Pending submissions take a few minutes to confirm."
+            );
+            return;
+         }
+         toast.error(
+            "Verification failed",
+            apiErr?.details?.[0] ?? apiErr?.message ?? "Try again"
+         );
+      }
+   };
+
+   const handleArchiveToggle = async () => {
+      if (!doc) return;
+      const mutation = doc.isArchived ? unarchiveMutation : archiveMutation;
+      const verb = doc.isArchived ? "Unarchived" : "Archived";
+      try {
+         await mutation.mutateAsync(doc.id);
+         toast.success(verb, `"${doc.title}"`);
+      } catch (err) {
+         const apiErr = err as ApiError;
+         toast.error(
+            `${doc.isArchived ? "Unarchive" : "Archive"} failed`,
+            apiErr?.details?.[0] ?? apiErr?.message ?? "Try again"
+         );
+      }
+   };
+
+   const archivePending =
+      archiveMutation.isPending || unarchiveMutation.isPending;
+
+   if (docQuery.isLoading) {
       return (
-         <div className='container mx-auto p-6'>
-            <div className='flex items-center justify-center h-64'>
-               <div className='text-center'>
-                  <div className='inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary' />
-                  <p className='text-sm text-muted-foreground mt-2'>
-                     Loading document...
-                  </p>
-               </div>
+         <div className='flex items-center justify-center h-64'>
+            <div className='text-center'>
+               <div
+                  className='inline-block w-8 h-8 rounded-full border-b-2 animate-spin'
+                  style={{ borderColor: "var(--dc-accent)" }}
+               />
+               <p
+                  className='text-[13px] mt-3'
+                  style={{ color: "var(--dc-text-dim)" }}
+               >
+                  Loading document…
+               </p>
             </div>
          </div>
       );
    }
 
-   if (!document) {
+   if (docQuery.isError || !doc) {
+      const apiErr = docQuery.error as ApiError | null;
       return (
-         <div className='container mx-auto p-6'>
-            <div className='flex items-center justify-center h-64'>
-               <div className='text-center'>
-                  <p className='text-lg font-medium'>Document not found</p>
-                  <Button
-                     variant='outline'
-                     onClick={() => router.push("/documents")}
-                     className='mt-4'
+         <div className='flex items-center justify-center h-64'>
+            <div className='text-center'>
+               <p
+                  className='text-[15px] font-semibold'
+                  style={{ color: "var(--dc-text)" }}
+               >
+                  {apiErr?.statusCode === 404
+                     ? "Document not found"
+                     : "Failed to load document"}
+               </p>
+               {apiErr?.message && apiErr.statusCode !== 404 && (
+                  <p
+                     className='text-[13px] mt-1'
+                     style={{ color: "var(--dc-text-dim)" }}
                   >
-                     Back to Documents
-                  </Button>
-               </div>
+                     {apiErr.message}
+                  </p>
+               )}
+               <DcButton
+                  onClick={() => router.push("/documents")}
+                  className='mt-4'
+               >
+                  Back to Documents
+               </DcButton>
             </div>
          </div>
       );
    }
 
    return (
-      <div className='container mx-auto p-6 space-y-6'>
-         {/* Header */}
-         <div className='flex items-start justify-between gap-4'>
-            <div className='flex-1'>
-               <Button
-                  variant='ghost'
-                  size='sm'
-                  onClick={() => router.push("/documents")}
-                  className='mb-2'
-               >
-                  <ArrowLeft size={16} className='mr-2' />
-                  Back to Documents
-               </Button>
-               <h1 className='text-3xl font-bold'>{document.title}</h1>
-               {document.description && (
-                  <p className='text-muted-foreground mt-2'>
-                     {document.description}
-                  </p>
-               )}
-            </div>
+      <div className='animate-[fadeIn_280ms_cubic-bezier(.4,0,.2,1)] space-y-5'>
+         {/* Back nav + action row */}
+         <div className='flex items-center justify-between gap-4 flex-wrap'>
+            <button
+               type='button'
+               onClick={() => router.push("/documents")}
+               className='inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[13px] transition-colors'
+               style={{ color: "var(--dc-text-muted)" }}
+               onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--dc-surface-2)";
+                  e.currentTarget.style.color = "var(--dc-text)";
+               }}
+               onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "var(--dc-text-muted)";
+               }}
+            >
+               <ArrowLeft size={14} strokeWidth={1.75} />
+               Back to Documents
+            </button>
 
-            {/* Action Buttons */}
-            <div className='flex items-center gap-2'>
-               <Button variant='outline' onClick={handleDownload}>
-                  <Download size={16} className='mr-2' />
-                  Download
-               </Button>
-               <Button variant='outline' onClick={handleShare}>
-                  <Share2 size={16} className='mr-2' />
+            <div className='flex items-center gap-1.5 flex-wrap'>
+               <DcButton
+                  icon={<Download size={14} strokeWidth={1.75} />}
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                  title={
+                     doc.isConfidential
+                        ? "Confidential — this download is tracked"
+                        : undefined
+                  }
+               >
+                  {isDownloading ? "Downloading…" : "Download"}
+               </DcButton>
+               <DcButton
+                  icon={<Share2 size={14} strokeWidth={1.75} />}
+                  onClick={handleShare}
+               >
                   Share
-               </Button>
-               {!document.blockchainVerified && (
-                  <Button variant='outline' onClick={handleVerify}>
-                     <Shield size={16} className='mr-2' />
-                     Verify
-                  </Button>
-               )}
-               <Button
-                  variant='destructive'
-                  onClick={handleDelete}
-                  disabled={isDeleting}
+               </DcButton>
+               <DcButton
+                  icon={
+                     doc.isArchived ? (
+                        <ArchiveRestore size={14} strokeWidth={1.75} />
+                     ) : (
+                        <Archive size={14} strokeWidth={1.75} />
+                     )
+                  }
+                  onClick={handleArchiveToggle}
+                  disabled={archivePending}
+                  title={doc.isArchived ? "Restore to main list" : "Hide from main list"}
                >
-                  <Trash2 size={16} className='mr-2' />
-                  Delete
-               </Button>
+                  {doc.isArchived ? "Unarchive" : "Archive"}
+               </DcButton>
+               <DcButton
+                  icon={<Shield size={14} strokeWidth={1.75} />}
+                  onClick={handleVerify}
+                  disabled={verifyMutation.isPending}
+                  title='Check that this file matches its blockchain-anchored hash'
+               >
+                  {verifyMutation.isPending ? "Verifying…" : "Verify"}
+               </DcButton>
+               <DcButton
+                  icon={<Settings size={14} strokeWidth={1.75} />}
+                  onClick={() => setSettingsOpen(true)}
+                  title='Edit title, description, and confidentiality'
+               >
+                  Settings
+               </DcButton>
+               <DcButton
+                  variant='danger'
+                  icon={<Trash2 size={14} strokeWidth={1.75} />}
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isPending}
+               >
+                  {deleteMutation.isPending ? "Deleting…" : "Delete"}
+               </DcButton>
             </div>
          </div>
 
-         {/* Status Badges */}
-         <div className='flex items-center gap-2 flex-wrap'>
-            <Badge variant='secondary'>
-               <File size={12} className='mr-1' />
-               {document.mimeType}
-            </Badge>
-            <Badge variant='secondary'>{formatBytes(document.fileSize)}</Badge>
-            {document.blockchainVerified && (
-               <Badge variant='default'>
-                  <Shield size={12} className='mr-1' />
-                  Blockchain Verified
-               </Badge>
+         {/* Title + description */}
+         <div>
+            <h1
+               className='text-[28px] font-semibold tracking-[-0.02em] m-0 flex items-center gap-2.5'
+               style={{
+                  color: "var(--dc-text)",
+                  fontFamily: "var(--dc-font-display)",
+               }}
+            >
+               {doc.isConfidential && (
+                  <Lock
+                     size={20}
+                     strokeWidth={2}
+                     aria-label='Confidential'
+                     style={{ color: "var(--dc-warn)", flexShrink: 0 }}
+                  />
+               )}
+               <span>{doc.title}</span>
+            </h1>
+            {doc.description && (
+               <p
+                  className='text-[14px] mt-1.5 leading-relaxed'
+                  style={{ color: "var(--dc-text-dim)" }}
+               >
+                  {doc.description}
+               </p>
             )}
-            {document.isEncrypted && (
-               <Badge variant='secondary'>
-                  <Lock size={12} className='mr-1' />
-                  Encrypted
-               </Badge>
-            )}
-            <Badge variant='outline'>
-               <Share2 size={12} className='mr-1' />
-               {document.shareCount} Share{document.shareCount !== 1 ? "s" : ""}
-            </Badge>
          </div>
+
+         {/* Confidential banner — only for confidential docs. Sits above
+             the metadata strip so the posture is the first thing the user
+             registers after the title. */}
+         {doc.isConfidential && <ConfidentialIndicator variant='banner' />}
+
+         {/* Inline metadata strip — owner, size, modified, created, tags */}
+         <div
+            className='flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px]'
+            style={{ color: "var(--dc-text-dim)" }}
+         >
+            <MetaItem icon={<User size={12} strokeWidth={1.75} />}>
+               <span style={{ color: "var(--dc-text)" }}>
+                  {doc.owner?.name ?? "Unknown"}
+               </span>
+            </MetaItem>
+            <DotSepInline />
+            <MetaItem icon={<File size={12} strokeWidth={1.75} />}>
+               {formatBytes(doc.fileSize ?? 0)}
+            </MetaItem>
+            <DotSepInline />
+            <MetaItem icon={<Clock size={12} strokeWidth={1.75} />}>
+               Modified {formatRelativeTime(doc.updatedAt)}
+            </MetaItem>
+            <DotSepInline />
+            <MetaItem icon={<Clock size={12} strokeWidth={1.75} />}>
+               Created {formatRelativeTime(doc.createdAt)}
+            </MetaItem>
+            {doc.tags.length > 0 && (
+               <>
+                  <DotSepInline />
+                  <MetaItem icon={<Tag size={12} strokeWidth={1.75} />}>
+                     <span className='flex flex-wrap gap-1'>
+                        {doc.tags.map((tag) => (
+                           <TagChip key={tag}>{tag}</TagChip>
+                        ))}
+                     </span>
+                  </MetaItem>
+               </>
+            )}
+         </div>
+
+         {/* Status chips — mimeType + verified state + share count + hash */}
+         <div className='flex items-center gap-2 flex-wrap'>
+            <Chip>{doc.mimeType}</Chip>
+            {doc.isArchived && (
+               <Chip
+                  style={{
+                     background: "var(--dc-warn-soft)",
+                     color: "var(--dc-warn)",
+                     border: "1px solid var(--dc-warn-border)",
+                  }}
+               >
+                  <Archive size={11} strokeWidth={2} /> Archived
+               </Chip>
+            )}
+            {cachedVerify?.verified && <VerifiedBadge status='verified' />}
+            {cachedVerify && !cachedVerify.verified && (
+               <Chip
+                  style={{
+                     background: "var(--dc-danger-soft)",
+                     color: "var(--dc-danger)",
+                     border: "1px solid var(--dc-danger-border)",
+                  }}
+               >
+                  <XCircle size={11} strokeWidth={2} /> Hash mismatch
+               </Chip>
+            )}
+            {doc.isEncrypted && (
+               <Chip>
+                  <Lock size={11} strokeWidth={2} /> Encrypted
+               </Chip>
+            )}
+            <Chip>
+               <Share2 size={11} strokeWidth={2} />
+               {doc.shareCount ?? 0}{" "}
+               Share{(doc.shareCount ?? 0) !== 1 ? "s" : ""}
+            </Chip>
+            {doc.blockchainHash && (
+               <Chip
+                  style={{
+                     fontFamily: "var(--dc-font-mono)",
+                  }}
+                  title={doc.blockchainHash}
+               >
+                  {doc.blockchainHash.slice(0, 12)}…
+               </Chip>
+            )}
+         </div>
+
+         {/* Blockchain verification result card — visible after a verify run */}
+         {cachedVerify && (
+            <div
+               className='rounded-xl p-4 text-[13px]'
+               style={{
+                  background: cachedVerify.verified
+                     ? "var(--dc-accent-soft)"
+                     : "var(--dc-danger-soft)",
+                  border: `1px solid ${
+                     cachedVerify.verified
+                        ? "var(--dc-accent-border)"
+                        : "var(--dc-danger-border)"
+                  }`,
+               }}
+            >
+               <div className='flex items-start gap-3'>
+                  {cachedVerify.verified ? (
+                     <Shield
+                        size={18}
+                        strokeWidth={1.75}
+                        className='mt-0.5 shrink-0'
+                        style={{ color: "var(--dc-accent)" }}
+                     />
+                  ) : (
+                     <ShieldAlert
+                        size={18}
+                        strokeWidth={1.75}
+                        className='mt-0.5 shrink-0'
+                        style={{ color: "var(--dc-danger)" }}
+                     />
+                  )}
+                  <div className='flex-1 min-w-0 space-y-2'>
+                     <div>
+                        <p
+                           className='font-semibold'
+                           style={{ color: "var(--dc-text)" }}
+                        >
+                           {cachedVerify.verified
+                              ? "File matches the on-chain record"
+                              : "File does not match the on-chain record"}
+                        </p>
+                        {cachedVerify.message && (
+                           <p
+                              className='text-[12px] mt-1'
+                              style={{ color: "var(--dc-text-muted)" }}
+                           >
+                              {cachedVerify.message}
+                           </p>
+                        )}
+                     </div>
+                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 text-[12px]'>
+                        <VerifyField label='File hash' mono value={cachedVerify.fileHash} />
+                        <VerifyField label='Chain hash' mono value={cachedVerify.chainHash} />
+                        {cachedVerify.txId && (
+                           <VerifyField
+                              label='Transaction'
+                              mono
+                              value={cachedVerify.txId}
+                           />
+                        )}
+                        {cachedVerify.blockNumber !== undefined && (
+                           <VerifyField
+                              label='Block'
+                              mono
+                              value={`#${cachedVerify.blockNumber}`}
+                           />
+                        )}
+                        {cachedVerify.confirmedAt && (
+                           <VerifyField
+                              label='Confirmed'
+                              value={formatRelativeTime(cachedVerify.confirmedAt)}
+                           />
+                        )}
+                     </div>
+                  </div>
+               </div>
+            </div>
+         )}
 
          {/* Tabs */}
          <Tabs
@@ -270,134 +567,51 @@ const DocumentDetailPage: FC = () => {
             }
          >
             <TabsList>
-               <TabsTrigger value='details'>Details</TabsTrigger>
+               <TabsTrigger value='preview'>Preview</TabsTrigger>
+               <TabsTrigger value='content'>Content</TabsTrigger>
                <TabsTrigger value='versions'>
                   Versions ({versions.length})
                </TabsTrigger>
                <TabsTrigger value='comments'>
-                  Comments ({comments.length})
+                  Comments
                </TabsTrigger>
-               <TabsTrigger value='share'>
-                  Sharing ({shares.length})
-               </TabsTrigger>
+               <TabsTrigger value='share'>Sharing</TabsTrigger>
             </TabsList>
 
-            {/* Details Tab */}
-            <TabsContent value='details' className='space-y-6'>
-               <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-                  {/* Metadata */}
-                  <div className='space-y-4'>
-                     <h3 className='font-semibold text-lg'>Metadata</h3>
-                     <div className='space-y-3 text-sm'>
-                        <div className='flex items-start gap-3'>
-                           <User
-                              size={16}
-                              className='text-muted-foreground mt-0.5'
-                           />
-                           <div>
-                              <p className='text-muted-foreground'>Owner</p>
-                              <p className='font-medium'>
-                                 {document.owner.name}
-                              </p>
-                           </div>
-                        </div>
-                        <div className='flex items-start gap-3'>
-                           <Clock
-                              size={16}
-                              className='text-muted-foreground mt-0.5'
-                           />
-                           <div>
-                              <p className='text-muted-foreground'>Created</p>
-                              <p className='font-medium'>
-                                 {formatRelativeTime(document.createdAt)}
-                              </p>
-                           </div>
-                        </div>
-                        <div className='flex items-start gap-3'>
-                           <Clock
-                              size={16}
-                              className='text-muted-foreground mt-0.5'
-                           />
-                           <div>
-                              <p className='text-muted-foreground'>
-                                 Last Modified
-                              </p>
-                              <p className='font-medium'>
-                                 {formatRelativeTime(document.updatedAt)}
-                              </p>
-                           </div>
-                        </div>
-                        <div className='flex items-start gap-3'>
-                           <Tag
-                              size={16}
-                              className='text-muted-foreground mt-0.5'
-                           />
-                           <div className='flex-1'>
-                              <p className='text-muted-foreground mb-1'>Tags</p>
-                              {document.tags.length > 0 ? (
-                                 <div className='flex flex-wrap gap-1'>
-                                    {document.tags.map((tag) => (
-                                       <Badge key={tag} variant='secondary'>
-                                          {tag}
-                                       </Badge>
-                                    ))}
-                                 </div>
-                              ) : (
-                                 <p className='text-sm text-muted-foreground'>
-                                    No tags
-                                 </p>
-                              )}
-                           </div>
-                        </div>
-                     </div>
-                  </div>
+            {/* Preview Tab — in-browser viewer for supported MIME types */}
+            <TabsContent value='preview' className='space-y-4 pt-4'>
+               <DocumentViewer document={doc} onDownload={handleDownload} />
+            </TabsContent>
 
-                  {/* Blockchain Info */}
-                  {document.blockchainVerified && document.blockchainHash && (
-                     <div className='space-y-4'>
-                        <h3 className='font-semibold text-lg'>
-                           Blockchain Info
-                        </h3>
-                        <div className='space-y-3 text-sm'>
-                           <div>
-                              <p className='text-muted-foreground'>Hash</p>
-                              <p className='font-mono text-xs break-all mt-1'>
-                                 {document.blockchainHash}
-                              </p>
-                           </div>
-                           <div>
-                              <p className='text-muted-foreground'>Status</p>
-                              <Badge variant='default' className='mt-1'>
-                                 <Shield size={12} className='mr-1' />
-                                 Verified
-                              </Badge>
-                           </div>
-                        </div>
-                     </div>
-                  )}
+            {/* Content Tab — pre-computed server-side text. Zero cost per
+                request. Chat source clicks highlight inside the text here
+                because only the mounted viewer picks up highlightStore events. */}
+            <TabsContent value='content' className='space-y-4 pt-4'>
+               <div
+                  className='rounded-xl overflow-hidden'
+                  style={{
+                     background: "var(--dc-surface)",
+                     border: "1px solid var(--dc-border)",
+                  }}
+               >
+                  <DocumentContentViewer documentId={doc.id} />
                </div>
-
-               {/* Preview Section */}
-               {document.thumbnailUrl && (
-                  <div>
-                     <h3 className='font-semibold text-lg mb-4'>Preview</h3>
-                     <div className='border rounded-lg p-4 bg-muted/50'>
-                        <img
-                           src={document.thumbnailUrl}
-                           alt={document.title}
-                           className='max-w-full h-auto rounded'
-                        />
-                     </div>
-                  </div>
-               )}
             </TabsContent>
 
             {/* Versions Tab */}
-            <TabsContent value='versions'>
-               <div className='space-y-4'>
-                  <h3 className='font-semibold text-lg'>Version History</h3>
+            <TabsContent value='versions' className='pt-4'>
+               <div className='space-y-3'>
+                  <h3
+                     className='text-[15px] font-semibold'
+                     style={{ color: "var(--dc-text)" }}
+                  >
+                     Version History
+                  </h3>
                   {versions.length === 0 ? (
-                     <p className='text-muted-foreground'>
+                     <p
+                        className='text-[13px]'
+                        style={{ color: "var(--dc-text-dim)" }}
+                     >
                         No version history available
                      </p>
                   ) : (
@@ -405,32 +619,106 @@ const DocumentDetailPage: FC = () => {
                         {versions.map((version) => (
                            <div
                               key={version.id}
-                              className='border rounded-lg p-4 hover:bg-muted/50 transition-colors'
+                              className='rounded-xl p-4 transition-colors'
+                              style={{
+                                 background: "var(--dc-surface)",
+                                 border: "1px solid var(--dc-border)",
+                              }}
+                              onMouseEnter={(e) => {
+                                 e.currentTarget.style.borderColor =
+                                    "var(--dc-border-bright)";
+                              }}
+                              onMouseLeave={(e) => {
+                                 e.currentTarget.style.borderColor =
+                                    "var(--dc-border)";
+                              }}
                            >
-                              <div className='flex items-center justify-between'>
-                                 <div className='flex items-center gap-3'>
-                                    <History
-                                       size={16}
-                                       className='text-muted-foreground'
-                                    />
-                                    <div>
-                                       <p className='font-medium'>
+                              <div className='flex items-center justify-between gap-3'>
+                                 <div className='flex items-center gap-3 min-w-0'>
+                                    <div
+                                       className='w-8 h-8 rounded-md flex items-center justify-center shrink-0'
+                                       style={{
+                                          background: "var(--dc-surface-2)",
+                                          border: "1px solid var(--dc-border)",
+                                          color: "var(--dc-text-muted)",
+                                       }}
+                                    >
+                                       <History
+                                          size={14}
+                                          strokeWidth={1.75}
+                                       />
+                                    </div>
+                                    <div className='min-w-0'>
+                                       <p
+                                          className='text-[13px] font-semibold flex items-center gap-2'
+                                          style={{ color: "var(--dc-text)" }}
+                                       >
                                           Version {version.version}
+                                          {version.version === doc.version && (
+                                             <span
+                                                className='inline-flex items-center h-5 px-2 rounded-full text-[10.5px] font-medium uppercase tracking-[0.04em]'
+                                                style={{
+                                                   background:
+                                                      "var(--dc-accent-soft)",
+                                                   color: "var(--dc-accent)",
+                                                   border:
+                                                      "1px solid var(--dc-accent-border)",
+                                                }}
+                                             >
+                                                Current
+                                             </span>
+                                          )}
                                        </p>
-                                       <p className='text-sm text-muted-foreground'>
-                                          {formatRelativeTime(
-                                             version.createdAt
-                                          )}{" "}
-                                          by {version.createdBy.name}
+                                       <p
+                                          className='text-[11.5px] mt-0.5'
+                                          style={{ color: "var(--dc-text-dim)" }}
+                                       >
+                                          {formatRelativeTime(version.createdAt)}
                                        </p>
+                                       {version.fileHash && (
+                                          <p
+                                             className='text-[11px] truncate'
+                                             style={{
+                                                fontFamily:
+                                                   "var(--dc-font-mono)",
+                                                color: "var(--dc-text-faint)",
+                                             }}
+                                          >
+                                             {version.fileHash}
+                                          </p>
+                                       )}
                                     </div>
                                  </div>
-                                 <Badge variant='secondary'>
-                                    {formatBytes(version.fileSize)}
-                                 </Badge>
+                                 <div className='flex items-center gap-2 shrink-0'>
+                                    <span
+                                       className='text-[11px] tabular-nums'
+                                       style={{
+                                          color: "var(--dc-text-muted)",
+                                       }}
+                                    >
+                                       {formatBytes(version.fileSize)}
+                                    </span>
+                                    <DcButton
+                                       size='sm'
+                                       icon={
+                                          <Download
+                                             size={13}
+                                             strokeWidth={1.75}
+                                          />
+                                       }
+                                       onClick={() =>
+                                          handleDownloadVersion(version.version)
+                                       }
+                                    >
+                                       Download
+                                    </DcButton>
+                                 </div>
                               </div>
                               {version.changes && (
-                                 <p className='text-sm text-muted-foreground mt-2'>
+                                 <p
+                                    className='text-[12px] mt-2 pl-11'
+                                    style={{ color: "var(--dc-text-muted)" }}
+                                 >
                                     {version.changes}
                                  </p>
                               )}
@@ -442,118 +730,111 @@ const DocumentDetailPage: FC = () => {
             </TabsContent>
 
             {/* Comments Tab */}
-            <TabsContent value='comments'>
-               <div className='space-y-4'>
-                  <h3 className='font-semibold text-lg'>Comments</h3>
-                  {comments.length === 0 ? (
-                     <p className='text-muted-foreground'>No comments yet</p>
-                  ) : (
-                     <div className='space-y-4'>
-                        {comments.map((comment) => (
-                           <div
-                              key={comment.id}
-                              className='border rounded-lg p-4'
-                           >
-                              <div className='flex items-start gap-3'>
-                                 <MessageSquare
-                                    size={16}
-                                    className='text-muted-foreground mt-1'
-                                 />
-                                 <div className='flex-1'>
-                                    <div className='flex items-center justify-between'>
-                                       <p className='font-medium'>
-                                          {comment.user.name}
-                                       </p>
-                                       <p className='text-xs text-muted-foreground'>
-                                          {formatRelativeTime(
-                                             comment.createdAt
-                                          )}
-                                       </p>
-                                    </div>
-                                    <p className='text-sm mt-1'>
-                                       {comment.text}
-                                    </p>
-                                 </div>
-                              </div>
-                           </div>
-                        ))}
-                     </div>
-                  )}
-               </div>
+            <TabsContent value='comments' className='pt-4'>
+               <CommentsPanel documentId={documentId} />
             </TabsContent>
 
-            {/* Share Tab */}
-            <TabsContent value='share'>
-               {document && (
-                  <ShareDocument
-                     document={document}
-                     shares={shares}
-                     availableUsers={MOCK_USERS}
-                     onShare={async (
-                        userId: string,
-                        permission: PermissionLevel
-                     ) => {
-                        try {
-                           await shareDocument(documentId, userId, permission);
-                           toast.success("Document shared successfully");
-                           fetchShares(documentId);
-                        } catch (error: any) {
-                           toast.error(
-                              "Failed to share document",
-                              error.message
-                           );
-                        }
-                     }}
-                     onRemoveShare={async (shareId: string) => {
-                        try {
-                           await removeShare(shareId);
-                           toast.success("Share removed successfully");
-                           fetchShares(documentId);
-                        } catch (error: any) {
-                           toast.error("Failed to remove share", error.message);
-                        }
-                     }}
-                     onGenerateLink={async (settings: ShareLinkSettings) => {
-                        try {
-                           const permission =
-                              settings.permission === "admin"
-                                 ? "edit"
-                                 : settings.permission;
-                           const link = await generateShareLink(documentId, {
-                              permission,
-                              expiresAt: settings.expiresAt,
-                              password: settings.requirePassword
-                                 ? settings.password
-                                 : undefined,
-                              allowDownload: settings.allowDownload,
-                              blockchainAudit:
-                                 settings.blockchainAudit ?? false,
-                           });
-                           toast.success("Share link generated");
-                           return { id: link.id, url: link.url };
-                        } catch (error: any) {
-                           toast.error(
-                              "Failed to generate link",
-                              error.message
-                           );
-                           throw error;
-                        }
-                     }}
-                     onRevokeLink={async (linkId: string) => {
-                        try {
-                           // TODO: Implement revoke link API
-                           console.log("Revoke link:", linkId);
-                           toast.success("Share link revoked");
-                        } catch (error: any) {
-                           toast.error("Failed to revoke link", error.message);
-                        }
-                     }}
+            {/* Share Tab — direct user/group grants + password-gated links */}
+            <TabsContent value='share' className='space-y-6 pt-4'>
+               <PermissionsPanel documentId={doc.id} />
+               <div className='border-t pt-6'>
+                  <h3 className='text-sm font-medium mb-4'>
+                     Share via password-protected link
+                  </h3>
+                  <ShareLinksPanel
+                     documentId={doc.id}
+                     documentTitle={doc.title}
                   />
-               )}
+               </div>
             </TabsContent>
          </Tabs>
+
+         {/* Tracked-download confirmation — rendered always, opens only
+             when handleDownload/handleDownloadVersion requests it. */}
+         {trackedDialog}
+
+         {/* Document settings (title / description / confidential) */}
+         <DocumentSettingsDialog
+            document={doc}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+         />
       </div>
    );
 };
 
 export default DocumentDetailPage;
+
+// ─────────────────────────────────────────────────────────────────────
+// Inline meta/chip helpers — scoped to this page
+// ─────────────────────────────────────────────────────────────────────
+const MetaItem: FC<{ icon: React.ReactNode; children: React.ReactNode }> = ({
+   icon,
+   children,
+}) => (
+   <span className='flex items-center gap-1.5'>
+      {icon}
+      {children}
+   </span>
+);
+
+const DotSepInline: FC = () => (
+   <span
+      aria-hidden
+      className='inline-block w-[3px] h-[3px] rounded-full'
+      style={{ background: "var(--dc-text-faint)" }}
+   />
+);
+
+const Chip: FC<{
+   children: React.ReactNode;
+   style?: React.CSSProperties;
+   title?: string;
+}> = ({ children, style, title }) => (
+   <span
+      title={title}
+      className='inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11px] font-medium truncate max-w-[14rem]'
+      style={{
+         background: "var(--dc-surface-2)",
+         color: "var(--dc-text-muted)",
+         border: "1px solid var(--dc-border)",
+         ...style,
+      }}
+   >
+      {children}
+   </span>
+);
+
+const VerifyField: FC<{ label: string; value: string; mono?: boolean }> = ({
+   label,
+   value,
+   mono,
+}) => (
+   <div>
+      <span style={{ color: "var(--dc-text-dim)" }}>{label}</span>
+      <p
+         className='break-all mt-0.5'
+         style={{
+            color: "var(--dc-text)",
+            fontFamily: mono ? "var(--dc-font-mono)" : undefined,
+            fontSize: mono ? 11 : 12,
+         }}
+         title={value}
+      >
+         {value}
+      </p>
+   </div>
+);
+
+const TagChip: FC<{ children: React.ReactNode }> = ({ children }) => (
+   <span
+      className='text-[10.5px] px-1.5 py-[1px] rounded font-medium'
+      style={{
+         background: "var(--dc-surface-2)",
+         color: "var(--dc-text-muted)",
+         border: "1px solid var(--dc-border)",
+      }}
+   >
+      {children}
+   </span>
+);

@@ -3,18 +3,20 @@
 import { FC } from "react";
 import { Document } from "@/lib/types/document";
 import {
+   Archive,
+   ArchiveRestore,
    File,
    FileText,
    Image as ImageIcon,
    MoreVertical,
    Download,
    Share2,
+   Star,
    Trash2,
    Eye,
    Shield,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
    DropdownMenu,
    DropdownMenuContent,
@@ -22,8 +24,10 @@ import {
    DropdownMenuSeparator,
    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AuthenticatedImage } from "@/components/shared/AuthenticatedImage";
 import { cn } from "@/lib/utils";
 import { formatBytes, formatRelativeTime } from "@/lib/utils/format";
+import { useMyPermissions } from "@/lib/hooks/useMyPermissions";
 
 interface DocumentCardProps {
    document: Document;
@@ -32,6 +36,8 @@ interface DocumentCardProps {
    onShare: (id: string) => void;
    onDelete: (id: string) => void;
    onVerify?: (id: string) => void;
+   onArchiveToggle?: (id: string) => void;
+   onFavoriteToggle?: (id: string) => void;
    selected?: boolean;
    onSelect?: (id: string) => void;
 }
@@ -48,16 +54,24 @@ export const DocumentCard: FC<DocumentCardProps> = ({
    onShare,
    onDelete,
    onVerify,
+   onArchiveToggle,
+   onFavoriteToggle,
    selected = false,
    onSelect,
 }) => {
-   const getFileIcon = () => {
-      if (document.mimeType.startsWith("image/")) return ImageIcon;
-      if (document.mimeType === "application/pdf") return FileText;
-      return File;
-   };
+   const { shouldHide } = useMyPermissions();
 
-   const FileIcon = getFileIcon();
+   // Render the icon directly as JSX to avoid React 19's
+   // "components-created-during-render" rule triggered by capturing the
+   // component type in a render-scoped variable.
+   const renderFileIcon = (size: number) => {
+      const className = "text-muted-foreground";
+      if (document.mimeType.startsWith("image/"))
+         return <ImageIcon size={size} className={className} />;
+      if (document.mimeType === "application/pdf")
+         return <FileText size={size} className={className} />;
+      return <File size={size} className={className} />;
+   };
 
    return (
       <div
@@ -82,6 +96,30 @@ export const DocumentCard: FC<DocumentCardProps> = ({
             </div>
          )}
 
+         {/* Star / Favorite button — sits left of the 3-dot menu to avoid checkbox overlap */}
+         {onFavoriteToggle && (
+            <div
+               className='absolute top-2 right-10 z-10'
+               onClick={(e) => e.stopPropagation()}
+            >
+               <button
+                  onClick={() => onFavoriteToggle(document.id)}
+                  className={cn(
+                     "flex items-center justify-center w-7 h-7 rounded-full transition-opacity",
+                     document.isFavorite
+                        ? "opacity-100 text-yellow-500"
+                        : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-yellow-500"
+                  )}
+                  title={document.isFavorite ? "Remove from favorites" : "Add to favorites"}
+               >
+                  <Star
+                     size={16}
+                     className={document.isFavorite ? "fill-yellow-500" : ""}
+                  />
+               </button>
+            </div>
+         )}
+
          {/* Actions Menu */}
          <div
             className='absolute top-2 right-2 z-10'
@@ -96,42 +134,78 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                      <Eye size={16} className='mr-2' />
                      View
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDownload(document.id)}>
-                     <Download size={16} className='mr-2' />
-                     Download
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onShare(document.id)}>
-                     <Share2 size={16} className='mr-2' />
-                     Share
-                  </DropdownMenuItem>
+                  {!shouldHide("can_download") && (
+                     <DropdownMenuItem onClick={() => onDownload(document.id)}>
+                        <Download size={16} className='mr-2' />
+                        Download
+                     </DropdownMenuItem>
+                  )}
+                  {!shouldHide("can_share") && (
+                     <DropdownMenuItem onClick={() => onShare(document.id)}>
+                        <Share2 size={16} className='mr-2' />
+                        Share
+                     </DropdownMenuItem>
+                  )}
+                  {onFavoriteToggle && (
+                     <DropdownMenuItem onClick={() => onFavoriteToggle(document.id)}>
+                        <Star
+                           size={16}
+                           className={cn("mr-2", document.isFavorite && "fill-yellow-500 text-yellow-500")}
+                        />
+                        {document.isFavorite ? "Remove from favorites" : "Add to favorites"}
+                     </DropdownMenuItem>
+                  )}
                   {onVerify && !document.blockchainVerified && (
                      <DropdownMenuItem onClick={() => onVerify(document.id)}>
                         <Shield size={16} className='mr-2' />
                         Verify on Blockchain
                      </DropdownMenuItem>
                   )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                     onClick={() => onDelete(document.id)}
-                     className='text-destructive'
-                  >
-                     <Trash2 size={16} className='mr-2' />
-                     Delete
-                  </DropdownMenuItem>
+                  {onArchiveToggle && (
+                     <DropdownMenuItem
+                        onClick={() => onArchiveToggle(document.id)}
+                     >
+                        {document.isArchived ? (
+                           <>
+                              <ArchiveRestore size={16} className='mr-2' />
+                              Unarchive
+                           </>
+                        ) : (
+                           <>
+                              <Archive size={16} className='mr-2' />
+                              Archive
+                           </>
+                        )}
+                     </DropdownMenuItem>
+                  )}
+                  {!shouldHide("can_delete") && (
+                     <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                           onClick={() => onDelete(document.id)}
+                           className='text-destructive'
+                        >
+                           <Trash2 size={16} className='mr-2' />
+                           Delete
+                        </DropdownMenuItem>
+                     </>
+                  )}
                </DropdownMenuContent>
             </DropdownMenu>
          </div>
 
-         {/* Thumbnail/Icon */}
-         <div className='flex items-center justify-center h-32 bg-muted rounded-lg mb-3'>
+         {/* Thumbnail — mt-6 ensures it clears the absolutely-positioned
+             buttons (checkbox / star / 3-dot) which sit at top-2 + h-7 */}
+         <div className='flex items-center justify-center h-32 bg-muted rounded-lg mt-6 mb-3 overflow-hidden'>
             {document.thumbnailUrl ? (
-               <img
+               <AuthenticatedImage
                   src={document.thumbnailUrl}
                   alt={document.title}
                   className='w-full h-full object-cover rounded-lg'
+                  fallback={renderFileIcon(48)}
                />
             ) : (
-               <FileIcon size={48} className='text-muted-foreground' />
+               renderFileIcon(48)
             )}
          </div>
 
@@ -142,7 +216,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({
             </h3>
 
             <div className='flex items-center gap-2 text-xs text-muted-foreground'>
-               <span>{formatBytes(document.fileSize)}</span>
+               <span>{formatBytes(document.fileSize ?? 0)}</span>
                <span>•</span>
                <span>{formatRelativeTime(document.updatedAt)}</span>
             </div>
@@ -176,7 +250,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                      Encrypted
                   </Badge>
                )}
-               {document.shareCount > 0 && (
+               {(document.shareCount ?? 0) > 0 && (
                   <Badge variant='outline' className='text-xs'>
                      <Share2 size={10} className='mr-1' />
                      {document.shareCount}

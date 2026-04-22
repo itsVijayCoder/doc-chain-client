@@ -40,7 +40,7 @@ export const BlockchainStats: FC<BlockchainStatsProps> = ({
    };
 
    return (
-      <Card className='p-6 border-blockchain/20 bg-blockchain/5'>
+      <Card className='p-6 border-blockchain/20 bg-blockchain/5 h-[390px]'>
          <div className='flex items-center gap-2 mb-4'>
             <Shield
                className='text-blockchain animate-blockchain-pulse'

@@ -1,5 +1,3 @@
-import { UserRole } from "@/lib/types";
-
 export const APP_NAME = "DocChain";
 export const APP_DESCRIPTION = "Blockchain-Secured Document Management System";
 
@@ -18,6 +16,7 @@ export const ROUTES = {
    SEARCH: "/search",
    SHARED: "/shared",
    FAVORITES: "/favorites",
+   ARCHIVE: "/archived",
    TRASH: "/trash",
 
    // Settings
@@ -30,9 +29,11 @@ export const ROUTES = {
    ADMIN: "/admin",
    ADMIN_DASHBOARD: "/admin-dashboard",
    ADMIN_USERS: "/admin/users",
+   ADMIN_ROLES: "/admin/roles",
    ADMIN_SECURITY: "/admin/security",
    ADMIN_BLOCKCHAIN: "/admin/blockchain",
    ADMIN_AUDIT_LOGS: "/admin/audit-logs",
+   ADMIN_WATERMARK_TRACE: "/admin/watermark/trace",
 } as const;
 
 export const NAVIGATION = {
@@ -68,6 +69,12 @@ export const NAVIGATION = {
          roles: ["all"] as const,
       },
       {
+         icon: "Archive",
+         label: "Archive",
+         href: ROUTES.ARCHIVE,
+         roles: ["all"] as const,
+      },
+      {
          icon: "Trash2",
          label: "Trash",
          href: ROUTES.TRASH,
@@ -88,6 +95,13 @@ export const NAVIGATION = {
          roles: ["admin"] as const,
       },
       {
+         icon: "KeyRound",
+         label: "Roles",
+         href: ROUTES.ADMIN_ROLES,
+         roles: ["admin"] as const,
+         permission: "can_manage_roles",
+      },
+      {
          icon: "Lock",
          label: "Security",
          href: ROUTES.ADMIN_SECURITY,
@@ -100,9 +114,15 @@ export const NAVIGATION = {
          roles: ["admin"] as const,
       },
       {
-         icon: "BrainCircuit",
+         icon: "Activity",
          label: "Audit Logs",
          href: ROUTES.ADMIN_AUDIT_LOGS,
+         roles: ["admin"] as const,
+      },
+      {
+         icon: "ShieldCheck",
+         label: "Watermark Trace",
+         href: ROUTES.ADMIN_WATERMARK_TRACE,
          roles: ["admin"] as const,
       },
    ],
@@ -139,9 +159,11 @@ export const ADMIN_ROUTES = [
    ROUTES.ADMIN,
    ROUTES.ADMIN_DASHBOARD,
    ROUTES.ADMIN_USERS,
+   ROUTES.ADMIN_ROLES,
    ROUTES.ADMIN_SECURITY,
    ROUTES.ADMIN_BLOCKCHAIN,
    ROUTES.ADMIN_AUDIT_LOGS,
+   ROUTES.ADMIN_WATERMARK_TRACE,
 ];
 
 export const FILE_UPLOAD = {

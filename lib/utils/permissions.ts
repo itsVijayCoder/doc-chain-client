@@ -1,21 +1,30 @@
 import { UserRole } from "@/lib/types";
 
+// super_admin inherits all admin/editor/viewer permissions.
+const ROLE_HIERARCHY: Record<string, string[]> = {
+   super_admin: ["super_admin", "admin", "editor", "viewer"],
+   admin: ["admin", "editor", "viewer"],
+   editor: ["editor", "viewer"],
+   viewer: ["viewer"],
+};
+
 /**
- * Check if user has required role
+ * Check if user has required role, respecting super_admin hierarchy.
  */
 export function hasRole(
    userRole: UserRole,
    requiredRoles: UserRole[] | "all"
 ): boolean {
    if (requiredRoles === "all") return true;
-   return requiredRoles.includes(userRole);
+   const effective = ROLE_HIERARCHY[userRole] ?? [userRole];
+   return requiredRoles.some((r) => effective.includes(r));
 }
 
 /**
- * Check if user is admin
+ * Check if user is admin (includes super_admin)
  */
 export function isAdmin(userRole: UserRole): boolean {
-   return userRole === "admin";
+   return userRole === "admin" || userRole === "super_admin";
 }
 
 /**

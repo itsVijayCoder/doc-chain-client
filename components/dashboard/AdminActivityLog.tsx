@@ -1,160 +1,73 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-   UserPlus,
-   UserMinus,
-   Shield,
-   AlertTriangle,
-   CheckCircle2,
-   Clock,
-   ChevronRight,
-} from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils/format";
+import { adminService, type AuditLog } from "@/lib/services/adminService";
+import Link from "next/link";
 
-interface AdminActivity {
-   id: string;
-   type: "user_add" | "user_remove" | "security" | "system" | "blockchain";
-   user: string;
-   action: string;
-   description: string;
-   timestamp: Date;
-   severity: "low" | "medium" | "high";
+function getSeverityVariant(severity?: string): "destructive" | "secondary" | "outline" {
+   if (severity === "high") return "destructive";
+   if (severity === "medium") return "secondary";
+   return "outline";
 }
 
-const mockActivities: AdminActivity[] = [
-   {
-      id: "1",
-      type: "user_add",
-      user: "John Doe",
-      action: "User registered",
-      description: "New user john.doe@example.com registered",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30),
-      severity: "low",
-   },
-   {
-      id: "2",
-      type: "security",
-      user: "System",
-      action: "Security scan completed",
-      description: "No vulnerabilities detected",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      severity: "low",
-   },
-   {
-      id: "3",
-      type: "blockchain",
-      user: "System",
-      action: "Blockchain sync",
-      description: "Synchronized 50 documents with blockchain",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4),
-      severity: "low",
-   },
-   {
-      id: "4",
-      type: "user_remove",
-      user: "Admin",
-      action: "User account suspended",
-      description: "Suspended user@example.com for policy violation",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      severity: "medium",
-   },
-];
-
 export const AdminActivityLog = () => {
-   const getActivityIcon = (type: string) => {
-      switch (type) {
-         case "user_add":
-            return <UserPlus size={16} />;
-         case "user_remove":
-            return <UserMinus size={16} />;
-         case "security":
-            return <Shield size={16} />;
-         case "blockchain":
-            return <CheckCircle2 size={16} />;
-         default:
-            return <Clock size={16} />;
-      }
-   };
+   const { data, isLoading } = useQuery({
+      queryKey: ["admin", "audit-logs", "dashboard"],
+      queryFn: () => adminService.listAuditLogs({ page_size: 7 }),
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+   });
 
-   const getSeverityColor = (severity: string) => {
-      switch (severity) {
-         case "high":
-            return "bg-(--error)/10 text-(--error)";
-         case "medium":
-            return "bg-(--warning)/10 text-(--warning)";
-         default:
-            return "bg-(--info)/10 text-(--info)";
-      }
-   };
-
-   const getSeverityBadge = (severity: string) => {
-      switch (severity) {
-         case "high":
-            return "destructive";
-         case "medium":
-            return "secondary";
-         default:
-            return "outline";
-      }
-   };
+   const logs: AuditLog[] = data?.data ?? [];
 
    return (
-      <Card className='p-6'>
-         <div className='flex items-center justify-between mb-4'>
-            <h2 className='text-xl font-semibold'>Admin Activity Log</h2>
-            <Button variant='ghost' size='sm'>
-               View All
-               <ChevronRight size={16} className='ml-1' />
-            </Button>
+      <Card className='p-6 h-[390px] flex flex-col'>
+         <div className='flex items-center justify-between mb-4 shrink-0'>
+            <h2 className='text-xl font-semibold'>Recent Activity</h2>
+            <Link
+               href='/admin/audit-logs'
+               className='inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors'
+            >
+               View All <ChevronRight size={14} />
+            </Link>
          </div>
 
-         <div className='space-y-3'>
-            {mockActivities.map((activity) => (
-               <div
-                  key={activity.id}
-                  className='p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors'
-               >
-                  <div className='flex items-start gap-3'>
-                     <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getSeverityColor(
-                           activity.severity
-                        )}`}
-                     >
-                        {getActivityIcon(activity.type)}
+         {isLoading ? (
+            <div className='space-y-3'>
+               {Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} className='h-9 rounded bg-muted animate-pulse' />
+               ))}
+            </div>
+         ) : logs.length === 0 ? (
+            <p className='text-sm text-muted-foreground py-4 text-center'>No activity yet.</p>
+         ) : (
+            <div className='divide-y overflow-y-auto flex-1'>
+               {logs.map((log) => (
+                  <div key={log.id} className='flex items-center justify-between gap-3 py-2.5'>
+                     <div className='flex items-center gap-2 min-w-0'>
+                        <span className='text-sm font-mono text-foreground truncate'>{log.action}</span>
+                        <span className='text-xs text-muted-foreground shrink-0'>
+                           by {log.user_name || log.user_email || "System"}
+                        </span>
                      </div>
-                     <div className='flex-1 min-w-0'>
-                        <div className='flex items-start justify-between gap-2'>
-                           <div>
-                              <p className='text-sm font-medium'>
-                                 {activity.action}
-                              </p>
-                              <p className='text-xs text-muted-foreground mt-0.5'>
-                                 by {activity.user}
-                              </p>
-                           </div>
-                           <Badge
-                              variant={
-                                 getSeverityBadge(activity.severity) as any
-                              }
-                              className='text-xs'
-                           >
-                              {activity.severity}
+                     <div className='flex items-center gap-2 shrink-0'>
+                        {log.severity && log.severity !== "info" && (
+                           <Badge variant={getSeverityVariant(log.severity)} className='text-xs'>
+                              {log.severity}
                            </Badge>
-                        </div>
-                        <p className='text-xs text-muted-foreground mt-2'>
-                           {activity.description}
-                        </p>
-                        <p className='text-xs text-muted-foreground mt-1'>
-                           {formatRelativeTime(activity.timestamp)}
-                        </p>
+                        )}
+                        <span className='text-xs text-muted-foreground'>
+                           {formatRelativeTime(log.created_at)}
+                        </span>
                      </div>
                   </div>
-               </div>
-            ))}
-         </div>
+               ))}
+            </div>
+         )}
       </Card>
    );
 };

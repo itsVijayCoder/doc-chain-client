@@ -1,6 +1,6 @@
 "use client";
 
-import { FC, useState, FormEvent } from "react";
+import { FC, useState, FormEvent, useEffect } from "react";
 import { useUserStore } from "@/lib/stores/userStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,25 +9,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Check } from "lucide-react";
 import { AvatarUpload } from "./AvatarUpload";
 
-/**
- * ProfileForm Component
- * Form for editing user profile information
- * Follows Single Responsibility Principle - only handles profile editing
- */
 export const ProfileForm: FC = () => {
-   const { profile, updateProfile, isUpdating } = useUserStore();
-   const [formData, setFormData] = useState({
-      name: profile?.name || "",
-      email: profile?.email || "",
-      bio: profile?.bio || "",
-   });
+   const { profile, fetchProfile, updateProfile, isUpdating, isLoading } = useUserStore();
+   const [formData, setFormData] = useState({ name: "", bio: "" });
    const [saved, setSaved] = useState(false);
+
+   useEffect(() => {
+      fetchProfile();
+   }, [fetchProfile]);
+
+   // Sync form fields when profile loads for the first time
+   useEffect(() => {
+      if (profile) {
+         setFormData({ name: profile.name, bio: profile.bio || "" });
+      }
+   }, [profile]);
 
    const handleSubmit = async (e: FormEvent) => {
       e.preventDefault();
-
       try {
-         await updateProfile(formData);
+         await updateProfile({ name: formData.name, bio: formData.bio });
          setSaved(true);
          setTimeout(() => setSaved(false), 3000);
       } catch (error) {
@@ -37,8 +38,21 @@ export const ProfileForm: FC = () => {
 
    const hasChanges =
       formData.name !== profile?.name ||
-      formData.email !== profile?.email ||
       formData.bio !== (profile?.bio || "");
+
+   if (isLoading && !profile) {
+      return (
+         <div className="space-y-6 animate-pulse">
+            <div className="h-24 w-24 rounded-full bg-muted" />
+            <div className="space-y-3">
+               <div className="h-4 w-32 rounded bg-muted" />
+               <div className="h-10 rounded bg-muted" />
+               <div className="h-4 w-32 rounded bg-muted" />
+               <div className="h-10 rounded bg-muted" />
+            </div>
+         </div>
+      );
+   }
 
    return (
       <form onSubmit={handleSubmit} className='space-y-8'>
@@ -62,29 +76,25 @@ export const ProfileForm: FC = () => {
                      id='name'
                      type='text'
                      value={formData.name}
-                     onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                     }
+                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                      placeholder='Enter your full name'
                      required
                   />
                </div>
 
-               {/* Email */}
+               {/* Email — read-only, changes require a separate verification flow */}
                <div className='space-y-2'>
                   <Label htmlFor='email'>Email Address</Label>
                   <Input
                      id='email'
                      type='email'
-                     value={formData.email}
-                     onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                     }
-                     placeholder='your.email@example.com'
-                     required
+                     value={profile?.email || ""}
+                     readOnly
+                     disabled
+                     className='bg-muted cursor-not-allowed'
                   />
                   <p className='text-xs text-muted-foreground'>
-                     Your email address is used for login and notifications
+                     Email changes require identity verification — contact support
                   </p>
                </div>
 
@@ -94,9 +104,7 @@ export const ProfileForm: FC = () => {
                   <Textarea
                      id='bio'
                      value={formData.bio}
-                     onChange={(e) =>
-                        setFormData({ ...formData, bio: e.target.value })
-                     }
+                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                      placeholder='Tell us about yourself...'
                      rows={4}
                      maxLength={500}
@@ -112,15 +120,15 @@ export const ProfileForm: FC = () => {
                   <div className='space-y-2'>
                      <Label>Role</Label>
                      <div className='px-3 py-2 bg-muted rounded-md text-sm capitalize'>
-                        {profile?.role || "N/A"}
+                        {profile?.role || "—"}
                      </div>
                   </div>
                   <div className='space-y-2'>
                      <Label>Member Since</Label>
                      <div className='px-3 py-2 bg-muted rounded-md text-sm'>
-                        {profile?.createdAt
+                        {profile?.createdAt && new Date(profile.createdAt).getFullYear() > 1970
                            ? new Date(profile.createdAt).toLocaleDateString()
-                           : "N/A"}
+                           : "—"}
                      </div>
                   </div>
                </div>
@@ -136,7 +144,7 @@ export const ProfileForm: FC = () => {
                </div>
             )}
 
-            <Button type='submit' disabled={!hasChanges || isUpdating}>
+            <Button type='submit' disabled={!hasChanges || isUpdating || isLoading}>
                {isUpdating ? (
                   <>
                      <Loader2 size={16} className='mr-2 animate-spin' />

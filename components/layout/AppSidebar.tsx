@@ -2,15 +2,13 @@
 
 import { FC } from "react";
 import Link from "next/link";
-import { useUIStore } from "@/lib/stores/uiStore";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { NAVIGATION } from "@/lib/constants";
 import { hasRole } from "@/lib/utils/permissions";
-import { SidebarLink } from "./SidebarLink";
-import { ThemeToggle } from "./ThemeToggle";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useMyPermissions } from "@/lib/hooks/useMyPermissions";
 import {
+   Archive,
    Home,
    FileText,
    Search,
@@ -25,11 +23,16 @@ import {
    User,
    Sliders,
    LayoutDashboard,
-   ChevronLeft,
-   ChevronRight,
+   ShieldCheck,
+   KeyRound,
+   LogOut,
+   Box,
+   Activity,
+   Droplet,
 } from "lucide-react";
 
 const iconMap = {
+   Archive,
    Home,
    FileText,
    Search,
@@ -39,188 +42,298 @@ const iconMap = {
    Users,
    Lock,
    Shield,
+   ShieldCheck,
+   KeyRound,
    BrainCircuit,
    Settings,
    User,
    Sliders,
    LayoutDashboard,
+   Box,
+   Activity,
+   Droplet,
 };
 
-export const AppSidebar: FC = () => {
-   const {
-      sidebarOpen,
-      sidebarCollapsed,
-      toggleSidebarCollapse,
-      setSidebarOpen,
-   } = useUIStore();
-   const { user } = useAuth();
+type NavItem = {
+   icon: string;
+   label: string;
+   href: string;
+   roles?: readonly string[];
+   permission?: string;
+};
 
-   const getIcon = (iconName: string) => {
-      const IconComponent = iconMap[iconName as keyof typeof iconMap];
-      return IconComponent ? <IconComponent size={20} /> : null;
+// Collapsed rail is 56px (w-14); expands to 232px on hover. Using group-hover
+// (not React state) keeps the interaction on the GPU-accelerated path — no
+// re-renders as the pointer moves in and out.
+export const AppSidebar: FC = () => {
+   const pathname = usePathname();
+   const { user, logout } = useAuth();
+   const { can } = useMyPermissions();
+
+   const getIcon = (name: string, size = 16) => {
+      const Icon = iconMap[name as keyof typeof iconMap];
+      return Icon ? <Icon size={size} strokeWidth={1.75} /> : null;
    };
 
-   const filterNavItems = (items: readonly any[]) => {
+   const filterNav = (items: readonly NavItem[]) => {
       if (!user) return [];
-      return items.filter((item: any) => {
+      return items.filter((item) => {
          if (!item.roles || item.roles[0] === "all") return true;
-         return hasRole(user.role, item.roles);
+         const roleOk = hasRole(user.role, [...item.roles]);
+         if (!roleOk) return false;
+         if (item.permission) return can(item.permission);
+         return true;
       });
    };
 
-   const mainNav = filterNavItems(NAVIGATION.main);
-   const adminNav = filterNavItems(NAVIGATION.admin);
-   const settingsNav = filterNavItems(NAVIGATION.settings);
+   const mainNav = filterNav(NAVIGATION.main);
+   const adminNav = filterNav(NAVIGATION.admin);
+   const settingsNav = filterNav(NAVIGATION.settings);
+
+   const initials = user
+      ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() ||
+        user.email?.[0]?.toUpperCase() ||
+        "?"
+      : "?";
+   const displayName = user
+      ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || user.email
+      : "";
+
+   // All nav hrefs across the three sections, used by isActive to decide
+   // whether a prefix match is actually the "best" match for the current
+   // pathname. Without this, "/admin" (Overview) would prefix-match every
+   // /admin/* sub-route and highlight alongside the real active item.
+   const allHrefs = [
+      ...mainNav.map((i) => i.href),
+      ...adminNav.map((i) => i.href),
+      ...settingsNav.map((i) => i.href),
+   ];
+
+   const isActive = (href: string) => {
+      if (!pathname) return false;
+      // Exact match always wins.
+      if (pathname === href) return true;
+      // Prefix match (/documents/:id highlights /documents) — but only if
+      // no other nav item has a more specific href that also matches. This
+      // makes "Overview" (/admin) defer to "Users" (/admin/users) when on
+      // a user page, while still letting "Documents" stay active on detail pages.
+      if (!pathname.startsWith(href + "/")) return false;
+      const moreSpecific = allHrefs.some(
+         (h) =>
+            h !== href &&
+            h.startsWith(href + "/") &&
+            (pathname === h || pathname.startsWith(h + "/"))
+      );
+      return !moreSpecific;
+   };
 
    return (
-      <>
-         {/* Mobile Overlay */}
-         {sidebarOpen && (
-            <div
-               className='fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden'
-               onClick={() => setSidebarOpen(false)}
-            />
-         )}
-
-         {/* Sidebar */}
-         <aside
-            className={cn(
-               "fixed top-0 left-0 z-50 h-screen bg-card border-r transition-all duration-300",
-               sidebarCollapsed ? "w-16" : "w-64",
-               sidebarOpen
-                  ? "translate-x-0"
-                  : "-translate-x-full lg:translate-x-0"
-            )}
+      <aside
+         className="group fixed top-0 left-0 z-50 h-screen w-14 hover:w-[232px] overflow-hidden
+                    flex flex-col
+                    transition-[width] duration-[220ms] ease-[cubic-bezier(.4,0,.2,1)]"
+         style={{
+            background: "var(--dc-surface)",
+            borderRight: "1px solid var(--dc-border)",
+         }}
+      >
+         {/* ── Brand head ─────────────────────────────────────────── */}
+         <div
+            className="flex items-center gap-2.5 h-14 px-3.5 shrink-0"
+            style={{ borderBottom: "1px solid var(--dc-border)" }}
          >
-            <div className='flex flex-col h-full'>
-               {/* Logo */}
-               <div className='flex items-center justify-between h-16 px-4 border-b'>
-                  {!sidebarCollapsed ? (
-                     <Link
-                        href='/dashboard'
-                        className='flex items-center gap-2'
-                     >
-                        <div className='w-8 h-8 rounded-lg bg-linear-to-br from-blockchain-primary to-blockchain-secondary flex items-center justify-center'>
-                           <svg
-                              className='w-5 h-5 text-white'
-                              fill='none'
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              strokeWidth='2'
-                              viewBox='0 0 24 24'
-                              stroke='currentColor'
-                           >
-                              <path d='M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' />
-                           </svg>
-                        </div>
-                        <span className='font-bold text-lg'>DocChain</span>
-                     </Link>
-                  ) : (
-                     <Link
-                        href='/dashboard'
-                        className='flex items-center justify-center w-full'
-                     >
-                        <div className='w-8 h-8 rounded-lg bg-linear-to-br from-blockchain-primary to-blockchain-secondary flex items-center justify-center'>
-                           <svg
-                              className='w-5 h-5 text-white'
-                              fill='none'
-                              strokeLinecap='round'
-                              strokeLinejoin='round'
-                              strokeWidth='2'
-                              viewBox='0 0 24 24'
-                              stroke='currentColor'
-                           >
-                              <path d='M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' />
-                           </svg>
-                        </div>
-                     </Link>
-                  )}
+            <Link href="/dashboard" className="flex items-center gap-2.5">
+               <div
+                  className="w-7 h-7 rounded-[7px] flex items-center justify-center shrink-0 text-white"
+                  style={{
+                     background:
+                        "linear-gradient(135deg, var(--dc-accent), var(--dc-info))",
+                     boxShadow:
+                        "0 0 0 1px var(--dc-accent-border), 0 4px 12px #10b98126",
+                  }}
+               >
+                  <Box size={14} strokeWidth={2} />
                </div>
+               <span
+                  className="font-semibold text-[14px] tracking-tight whitespace-nowrap
+                             opacity-0 group-hover:opacity-100 transition-opacity duration-[180ms]"
+                  style={{ color: "var(--dc-text)" }}
+               >
+                  DocChain
+               </span>
+            </Link>
+         </div>
 
-               {/* Navigation */}
-               <nav className='flex-1 overflow-y-auto py-4 px-2 space-y-1'>
-                  {/* Main Navigation */}
-                  {mainNav.map((item) => (
-                     <SidebarLink
-                        key={item.href}
-                        href={item.href}
-                        icon={getIcon(item.icon)}
-                        label={item.label}
-                        collapsed={sidebarCollapsed}
-                     />
-                  ))}
+         {/* ── Scrollable nav area ────────────────────────────────── */}
+         <div className="flex-1 overflow-y-auto overflow-x-hidden py-2.5 px-2">
+            <NavSection items={mainNav} getIcon={getIcon} isActive={isActive} />
 
-                  {/* Admin Section */}
-                  {adminNav.length > 0 && (
-                     <>
-                        <div
-                           className={cn(
-                              "px-3 py-2",
-                              sidebarCollapsed && "px-0"
-                           )}
-                        >
-                           {!sidebarCollapsed && (
-                              <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
-                                 Admin
-                              </p>
-                           )}
-                           {sidebarCollapsed && (
-                              <div className='h-px bg-border' />
-                           )}
-                        </div>
-                        {adminNav.map((item) => (
-                           <SidebarLink
-                              key={item.href}
-                              href={item.href}
-                              icon={getIcon(item.icon)}
-                              label={item.label}
-                              collapsed={sidebarCollapsed}
-                           />
-                        ))}
-                     </>
-                  )}
+            {adminNav.length > 0 && (
+               <NavSection
+                  label="Admin"
+                  items={adminNav}
+                  getIcon={getIcon}
+                  isActive={isActive}
+               />
+            )}
 
-                  {/* Settings Section */}
-                  <div className={cn("px-3 py-2", sidebarCollapsed && "px-0")}>
-                     {!sidebarCollapsed && (
-                        <p className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>
-                           Settings
-                        </p>
-                     )}
-                     {sidebarCollapsed && <div className='h-px bg-border' />}
-                  </div>
-                  {settingsNav.map((item) => (
-                     <SidebarLink
-                        key={item.href}
-                        href={item.href}
-                        icon={getIcon(item.icon)}
-                        label={item.label}
-                        collapsed={sidebarCollapsed}
-                     />
-                  ))}
-               </nav>
+            {settingsNav.length > 0 && (
+               <NavSection
+                  label="Settings"
+                  items={settingsNav}
+                  getIcon={getIcon}
+                  isActive={isActive}
+               />
+            )}
+         </div>
 
-               {/* Theme Toggle & Collapse Button */}
-               <div className='p-2 border-t space-y-1'>
-                  <ThemeToggle collapsed={sidebarCollapsed} />
-                  <Button
-                     variant='ghost'
-                     size='sm'
-                     onClick={toggleSidebarCollapse}
-                     className={cn("w-full", sidebarCollapsed && "px-2")}
-                  >
-                     {sidebarCollapsed ? (
-                        <ChevronRight size={20} />
-                     ) : (
-                        <>
-                           <ChevronLeft size={20} />
-                           <span className='ml-2'>Collapse</span>
-                        </>
-                     )}
-                  </Button>
+         {/* ── Chain status ticker ────────────────────────────────── */}
+         <div
+            className="mx-2 mb-2 px-2.5 py-2 rounded-md flex items-center gap-2 whitespace-nowrap overflow-hidden
+                       opacity-0 group-hover:opacity-100 transition-opacity duration-[180ms]"
+            style={{
+               background: "var(--dc-surface-2)",
+               border: "1px solid var(--dc-border)",
+               fontSize: 11,
+               color: "var(--dc-text-muted)",
+            }}
+         >
+            <span className="pulse-dot-dc shrink-0" />
+            <span>
+               Chain synced ·{" "}
+               <span
+                  style={{
+                     fontFamily: "var(--dc-font-mono)",
+                     color: "var(--dc-text)",
+                  }}
+               >
+                  #184,927
+               </span>
+            </span>
+         </div>
+
+         {/* ── Avatar footer ──────────────────────────────────────── */}
+         <Link
+            href="/settings/profile"
+            className="flex items-center gap-2.5 px-2.5 py-2.5 shrink-0 transition-colors hover:bg-[var(--dc-surface-2)]"
+            style={{ borderTop: "1px solid var(--dc-border)" }}
+         >
+            <div
+               className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0"
+               style={{
+                  background: "linear-gradient(135deg, #6366f1, #ec4899)",
+               }}
+            >
+               {initials}
+            </div>
+            <div
+               className="flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-[180ms]"
+            >
+               <div
+                  className="text-[12px] font-semibold truncate"
+                  style={{ color: "var(--dc-text)" }}
+               >
+                  {displayName || "Account"}
+               </div>
+               <div
+                  className="text-[11px] truncate"
+                  style={{ color: "var(--dc-text-dim)" }}
+               >
+                  {user?.email ?? ""}
                </div>
             </div>
-         </aside>
-      </>
+            <button
+               type="button"
+               onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  logout();
+               }}
+               aria-label="Log out"
+               title="Log out"
+               className="w-7 h-7 rounded-md flex items-center justify-center shrink-0
+                          opacity-0 group-hover:opacity-100 transition-all duration-[180ms]
+                          hover:bg-[var(--dc-danger-soft)]"
+               style={{ color: "var(--dc-text-dim)" }}
+            >
+               <LogOut size={14} strokeWidth={1.75} />
+            </button>
+         </Link>
+      </aside>
    );
 };
+
+// ── Subcomponent: grouped nav section ─────────────────────────────
+interface NavSectionProps {
+   label?: string;
+   items: NavItem[];
+   getIcon: (name: string, size?: number) => React.ReactNode;
+   isActive: (href: string) => boolean;
+}
+
+const NavSection: FC<NavSectionProps> = ({ label, items, getIcon, isActive }) => (
+   <div className="mb-3.5">
+      {label && (
+         <>
+            {/* Label when expanded — fades in */}
+            <div
+               className="text-[10px] font-semibold uppercase tracking-[0.08em] px-2.5 pt-2 pb-1
+                          whitespace-nowrap opacity-0 group-hover:opacity-100
+                          transition-opacity duration-[180ms] h-[22px]"
+               style={{ color: "var(--dc-text-faint)" }}
+            >
+               {label}
+            </div>
+            {/* Hairline divider when collapsed — fades out on hover */}
+            <div
+               className="mx-2.5 my-2 h-px opacity-100 group-hover:opacity-0 transition-opacity duration-[180ms]"
+               style={{ background: "var(--dc-border)" }}
+               aria-hidden
+            />
+         </>
+      )}
+      {items.map((it) => {
+         const active = isActive(it.href);
+         return (
+            <Link
+               key={it.href}
+               href={it.href}
+               className="relative flex items-center gap-2.5 px-2.5 py-[7px] rounded-md whitespace-nowrap text-[13px] font-medium select-none transition-colors duration-[120ms]"
+               style={{
+                  color: active ? "var(--dc-text)" : "var(--dc-text-muted)",
+                  background: active ? "var(--dc-surface-2)" : "transparent",
+               }}
+               onMouseEnter={(e) => {
+                  if (!active) {
+                     e.currentTarget.style.background = "var(--dc-surface-2)";
+                     e.currentTarget.style.color = "var(--dc-text)";
+                  }
+               }}
+               onMouseLeave={(e) => {
+                  if (!active) {
+                     e.currentTarget.style.background = "transparent";
+                     e.currentTarget.style.color = "var(--dc-text-muted)";
+                  }
+               }}
+            >
+               {/* Active indicator — 2px accent bar on the left */}
+               {active && (
+                  <span
+                     aria-hidden
+                     className="absolute left-[-8px] top-[7px] bottom-[7px] w-[2px] rounded-sm"
+                     style={{ background: "var(--dc-accent)" }}
+                  />
+               )}
+               <span className="shrink-0 inline-flex items-center justify-center w-4 h-4">
+                  {getIcon(it.icon)}
+               </span>
+               <span
+                  className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity duration-[180ms]"
+               >
+                  {it.label}
+               </span>
+            </Link>
+         );
+      })}
+   </div>
+);

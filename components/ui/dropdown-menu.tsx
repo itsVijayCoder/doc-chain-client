@@ -42,7 +42,25 @@ function DropdownMenuContent({
       >
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
-          className={cn("data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 bg-popover text-popover-foreground min-w-32 rounded-lg p-1 shadow-md ring-1 duration-100 z-50 max-h-(--available-height) w-(--anchor-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto outline-none data-closed:overflow-hidden", className )}
+          style={{
+            background: "var(--dc-elevated)",
+            color: "var(--dc-text)",
+            border: "1px solid var(--dc-border-strong)",
+            boxShadow: "var(--dc-shadow-lg)",
+          }}
+          className={cn(
+            // Animations — in/out fade + zoom + side-specific slide. Duration
+            // bumped to 180ms so the motion is clearly perceptible (matches
+            // the Dialog timing).
+            "data-open:animate-in data-closed:animate-out",
+            "data-closed:fade-out-0 data-open:fade-in-0",
+            "data-closed:zoom-out-95 data-open:zoom-in-95",
+            "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+            "duration-[180ms] ease-[cubic-bezier(.4,0,.2,1)]",
+            // Layout
+            "min-w-32 rounded-lg p-1 z-50 max-h-(--available-height) w-(--anchor-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto outline-none data-closed:overflow-hidden",
+            className
+          )}
           {...props}
         />
       </MenuPrimitive.Positioner>
@@ -65,7 +83,8 @@ function DropdownMenuLabel({
     <MenuPrimitive.GroupLabel
       data-slot="dropdown-menu-label"
       data-inset={inset}
-      className={cn("text-muted-foreground px-1.5 py-1 text-xs font-medium data-[inset]:pl-8", className)}
+      style={{ color: "var(--dc-text-dim)" }}
+      className={cn("px-1.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.06em] data-[inset]:pl-8", className)}
       {...props}
     />
   )
@@ -86,7 +105,23 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "focus:bg-accent focus:text-accent-foreground data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 dark:data-[variant=destructive]:focus:bg-destructive/20 data-[variant=destructive]:focus:text-destructive data-[variant=destructive]:*:[svg]:text-destructive not-data-[variant=destructive]:focus:**:text-accent-foreground gap-1.5 rounded-md px-1.5 py-1 text-sm [&_svg:not([class*='size-'])]:size-4 group/dropdown-menu-item relative flex cursor-default items-center outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50 data-[inset]:pl-8 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        // Base
+        "group/dropdown-menu-item relative flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] outline-hidden select-none transition-colors",
+        "text-[color:var(--dc-text-muted)]",
+        "[&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+        "data-[inset]:pl-8",
+        // Hover / highlighted state (base-ui focus)
+        "focus:bg-[var(--dc-surface-2)] focus:text-[var(--dc-text)]",
+        "data-highlighted:bg-[var(--dc-surface-2)] data-highlighted:text-[var(--dc-text)]",
+        // Destructive variant
+        "data-[variant=destructive]:text-[var(--dc-danger)]",
+        "data-[variant=destructive]:focus:bg-[var(--dc-danger-soft)]",
+        "data-[variant=destructive]:focus:text-[var(--dc-danger)]",
+        "data-[variant=destructive]:data-highlighted:bg-[var(--dc-danger-soft)]",
+        "data-[variant=destructive]:data-highlighted:text-[var(--dc-danger)]",
+        "data-[variant=destructive]:*:[svg]:text-[var(--dc-danger)]",
+        // Disabled
+        "data-disabled:pointer-events-none data-disabled:opacity-50",
         className
       )}
       {...props}
@@ -133,7 +168,7 @@ function DropdownMenuSubContent({
   return (
     <DropdownMenuContent
       data-slot="dropdown-menu-sub-content"
-      className={cn("data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 ring-foreground/10 bg-popover text-popover-foreground min-w-[96px] rounded-md p-1 shadow-lg ring-1 duration-100 w-auto", className)}
+      className={cn("min-w-[96px] w-auto", className)}
       align={align}
       alignOffset={alignOffset}
       side={side}
@@ -215,7 +250,8 @@ function DropdownMenuSeparator({
   return (
     <MenuPrimitive.Separator
       data-slot="dropdown-menu-separator"
-      className={cn("bg-border -mx-1 my-1 h-px", className)}
+      style={{ background: "var(--dc-border)" }}
+      className={cn("-mx-1 my-1 h-px", className)}
       {...props}
     />
   )

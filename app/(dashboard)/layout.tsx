@@ -1,69 +1,51 @@
+// Client component — reads auth state via AuthGuard. Do not convert to a
+// server component; tokens live in browser memory/localStorage and the
+// guard depends on client-side TanStack Query.
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { MobileMenu } from "@/components/layout/MobileMenu";
-import { useUIStore } from "@/lib/stores/uiStore";
-import { useAuth } from "@/lib/hooks/useAuth";
-import { cn } from "@/lib/utils";
+import { CommandPalette } from "@/components/layout/CommandPalette";
+import { AuthGuard } from "@/components/shared/AuthGuard";
+import { ChatBubble } from "@/components/chat/ChatBubble";
+import { ChatWindow } from "@/components/chat/ChatWindow";
 
 export default function DashboardLayout({
    children,
 }: {
    children: React.ReactNode;
 }) {
-   const { sidebarCollapsed } = useUIStore();
-   const { isAuthenticated, isLoading } = useAuth();
-   const router = useRouter();
-
-   // Skip auth check in development with mock auth
-   const useMockAuth =
-      process.env.NEXT_PUBLIC_USE_MOCK_AUTH === "true" ||
-      process.env.NODE_ENV === "development";
-
-   useEffect(() => {
-      if (!useMockAuth && !isLoading && !isAuthenticated) {
-         router.push("/login");
-      }
-   }, [isAuthenticated, isLoading, router, useMockAuth]);
-
-   if (!useMockAuth && isLoading) {
-      return (
-         <div className='flex items-center justify-center min-h-screen'>
-            <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-primary' />
-         </div>
-      );
-   }
-
-   if (!useMockAuth && !isAuthenticated) {
-      return null;
-   }
-
    return (
-      <div className='min-h-screen bg-background'>
-         {/* Sidebar */}
-         <AppSidebar />
-
-         {/* Main Content */}
+      <AuthGuard>
+         {/* Sidebar is always 56px in its resting state and expands on hover
+             as an overlay. Content uses a fixed pl-14 offset so the hover
+             expansion doesn't shift the page. */}
          <div
-            className={cn(
-               "transition-all duration-300",
-               sidebarCollapsed ? "lg:pl-16" : "lg:pl-64"
-            )}
+            className='min-h-screen'
+            style={{ background: "var(--dc-bg)" }}
          >
-            {/* Header */}
-            <AppHeader />
-
-            {/* Page Content */}
-            <main className='pt-16 min-h-screen'>
-               <div className='container mx-auto p-4 lg:p-6'>{children}</div>
-            </main>
+            <AppSidebar />
+            <div className='lg:pl-14'>
+               <AppHeader />
+               <main
+                  className='pt-[52px] min-h-screen'
+                  style={{ background: "var(--dc-bg)" }}
+               >
+                  <div className='container mx-auto p-4 lg:p-6'>
+                     {children}
+                  </div>
+               </main>
+            </div>
+            <MobileMenu />
+            {/* Command palette — ⌘K / Ctrl+K. State lives in uiStore so the
+                AppHeader trigger and the global keyboard shortcut both feed
+                the same switch. */}
+            <CommandPalette />
+            {/* AI chat — available on every dashboard page, scope auto-detects */}
+            <ChatWindow />
+            <ChatBubble />
          </div>
-
-         {/* Mobile Menu */}
-         <MobileMenu />
-      </div>
+      </AuthGuard>
    );
 }

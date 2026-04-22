@@ -88,6 +88,104 @@
    --verified: var(--status-success);
    --pending: var(--status-warning);
    --failed: var(--status-error);
+
+   /* ═══════════════════════════════════════════════════════════════════
+      DocChain Design System Tokens — LIGHT (default)
+      All new components use var(--dc-*). Prefixed to coexist with shadcn.
+      ═══════════════════════════════════════════════════════════════════ */
+
+   /* 5-layer surface stack */
+   --dc-bg:              #fafaf9;
+   --dc-surface:         #ffffff;
+   --dc-surface-2:       #f5f5f4;
+   --dc-surface-3:       #eeeeec;
+   --dc-elevated:        #ffffff;
+
+   /* border scale */
+   --dc-border:          #e7e5e4;
+   --dc-border-strong:   #d6d3d1;
+   --dc-border-bright:   #b8b4b0;
+
+   /* text scale */
+   --dc-text:            #17171a;
+   --dc-text-muted:      #57575c;
+   --dc-text-dim:        #78787e;
+   --dc-text-faint:      #a1a1a8;
+
+   /* semantic — emerald accent (default palette) */
+   --dc-accent:          #10b981;
+   --dc-accent-soft:     #10b9811a;
+   --dc-accent-border:   #10b98133;
+   --dc-accent-hover:    #0ea472;
+
+   --dc-info:            #06b6d4;
+   --dc-info-soft:       #06b6d41a;
+   --dc-info-border:     #06b6d433;
+
+   --dc-warn:            #f59e0b;
+   --dc-warn-soft:       #f59e0b1a;
+   --dc-warn-border:     #f59e0b33;
+
+   --dc-danger:          #f43f5e;
+   --dc-danger-soft:     #f43f5e1a;
+   --dc-danger-border:   #f43f5e33;
+
+   /* shadows — tuned for light */
+   --dc-shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+   --dc-shadow-md: 0 4px 14px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+   --dc-shadow-lg: 0 16px 40px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+   --dc-shadow-glow: 0 0 0 1px var(--dc-accent-border), 0 8px 24px #10b98118;
+
+   /* radii */
+   --dc-radius-sm: 6px;
+   --dc-radius:    8px;
+   --dc-radius-lg: 12px;
+   --dc-radius-xl: 16px;
+
+   /* fonts — wired to next/font CSS vars defined in app/layout.tsx */
+   --dc-font-sans:    var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+   --dc-font-mono:    var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+   --dc-font-display: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+   /* density — default values; density switcher is deferred */
+   --dc-row-h: 40px;
+   --dc-card-pad: 14px;
+   --dc-gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Accent palette overrides — switched via data-accent on <html>.
+   This powers the future admin setting; default is "emerald".
+   ═══════════════════════════════════════════════════════════════════ */
+:root[data-accent="emerald"] {
+   --dc-accent: #10b981;
+   --dc-accent-soft: #10b9811a;
+   --dc-accent-border: #10b98133;
+   --dc-accent-hover: #0ea472;
+}
+:root[data-accent="indigo"] {
+   --dc-accent: #818cf8;
+   --dc-accent-soft: #818cf81a;
+   --dc-accent-border: #818cf833;
+   --dc-accent-hover: #6c78f0;
+   --dc-info: #22d3ee;
+   --dc-info-soft: #22d3ee1a;
+   --dc-info-border: #22d3ee33;
+   --dc-warn: #fb923c;
+   --dc-warn-soft: #fb923c1a;
+   --dc-warn-border: #fb923c33;
+}
+:root[data-accent="amber"] {
+   --dc-accent: #eab308;
+   --dc-accent-soft: #eab3081a;
+   --dc-accent-border: #eab30833;
+   --dc-accent-hover: #ca9a04;
+   --dc-info: #a78bfa;
+   --dc-info-soft: #a78bfa1a;
+   --dc-info-border: #a78bfa33;
+   --dc-warn: #f43f5e;
+   --dc-warn-soft: #f43f5e1a;
+   --dc-warn-border: #f43f5e33;
 }
 
 .dark {
@@ -156,6 +254,30 @@
    --ai-primary: oklch(0.7 0.15 280);
    --ai-secondary: oklch(0.6 0.12 280);
    --ai-glow: oklch(0.7 0.15 280 / 0.3);
+
+   /* ═══════════════════════════════════════════════════════════════════
+      DocChain Design System Tokens — DARK overrides
+      ═══════════════════════════════════════════════════════════════════ */
+
+   --dc-bg:              #0a0b0d;
+   --dc-surface:         #0f1114;
+   --dc-surface-2:       #15181d;
+   --dc-surface-3:       #1c2026;
+   --dc-elevated:        #1a1e24;
+
+   --dc-border:          #22272e;
+   --dc-border-strong:   #2d333b;
+   --dc-border-bright:   #373e47;
+
+   --dc-text:            #e6edf3;
+   --dc-text-muted:      #9aa4b2;
+   --dc-text-dim:        #6b7684;
+   --dc-text-faint:      #4a5361;
+
+   /* shadows — deeper for dark */
+   --dc-shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+   --dc-shadow-md: 0 4px 14px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.4);
+   --dc-shadow-lg: 0 16px 40px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4);
 }
 
 @theme inline {
@@ -218,13 +340,65 @@
       @apply border-border outline-ring/50;
    }
    body {
-      @apply bg-background text-foreground;
+      background: var(--dc-bg);
+      color: var(--dc-text);
+      /* Design system: Inter with subtle feature set (ss01 alt 1, cv11 alt 6/9,
+         calt contextual ligatures). Matches rsms.me "Inter var" look. */
+      font-family: var(--dc-font-sans);
+      font-feature-settings: "ss01", "cv11", "calt";
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
    }
 
    /* Container customization */
    .container {
       @apply mx-auto max-w-screen-2xl;
    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Design-system keyframes & shared classes (used by AppSidebar,
+   status indicators, etc). Kept outside @layer so they're always
+   available regardless of Tailwind layer order.
+   ═══════════════════════════════════════════════════════════════════ */
+.pulse-dot-dc {
+   width: 6px;
+   height: 6px;
+   border-radius: 50%;
+   background: var(--dc-accent);
+   box-shadow: 0 0 0 0 var(--dc-accent);
+   animation: pulse-dot-dc 2s infinite;
+}
+@keyframes pulse-dot-dc {
+   0%   { box-shadow: 0 0 0 0 var(--dc-accent); }
+   70%  { box-shadow: 0 0 0 6px transparent; }
+   100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* Page-mount fade — used by Tailwind's animate-[fadeIn_...] arbitrary value. */
+@keyframes fadeIn {
+   from { opacity: 0; transform: translateY(4px); }
+   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Theme-swap transition. Added to <html> by the theme toggle for ~320ms,
+   then removed. During the window, every element smoothly cross-fades
+   colors/borders/fills/strokes so the dark ↔ light swap feels gradual
+   instead of an instant flash. Removed afterwards so it doesn't slow
+   down hover/focus interactions in steady state.
+   ═══════════════════════════════════════════════════════════════════ */
+.dc-theme-animate,
+.dc-theme-animate *,
+.dc-theme-animate *::before,
+.dc-theme-animate *::after {
+   transition:
+      background-color 280ms ease,
+      border-color 280ms ease,
+      color 280ms ease,
+      fill 280ms ease,
+      stroke 280ms ease,
+      box-shadow 280ms ease !important;
 }
 
 @layer utilities {

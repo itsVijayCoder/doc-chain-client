@@ -2,61 +2,82 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-   Users,
-   FileText,
-   HardDrive,
-   Activity,
-   TrendingUp,
-   AlertCircle,
-   CheckCircle2,
-   Clock,
-} from "lucide-react";
+import { Users, FileText, HardDrive, Activity, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AdminStats, BlockchainNetworkStatus, ReadyzResponse } from "@/lib/services/adminService";
 
-interface SystemMetric {
+function HealthRow({ label, up, latencyMs, loading }: {
    label: string;
-   value: string | number;
-   change?: {
-      value: number;
-      isPositive: boolean;
-   };
-   icon: React.ReactNode;
-   color: string;
+   up: boolean;
+   latencyMs?: number;
+   loading?: boolean;
+}) {
+   return (
+      <div className={cn(
+         "flex items-center justify-between p-3 rounded-lg border",
+         loading ? "bg-muted/30 border-border"
+            : up ? "bg-(--success)/10 border-(--success)/20"
+            : "bg-(--error)/10 border-(--error)/20"
+      )}>
+         <div className='flex items-center gap-2'>
+            {loading
+               ? <span className='w-4 h-4 rounded-full bg-muted animate-pulse' />
+               : up
+               ? <CheckCircle2 size={16} className='text-(--success)' />
+               : <XCircle size={16} className='text-(--error)' />
+            }
+            <span className='text-sm font-medium'>{label}</span>
+         </div>
+         <Badge variant='outline' className={cn(
+            loading ? "text-muted-foreground border-border"
+               : up ? "text-(--success) border-(--success)"
+               : "text-(--error) border-(--error)"
+         )}>
+            {loading ? "Checking…" : up ? `Up${latencyMs !== undefined ? ` · ${latencyMs}ms` : ""}` : "Down"}
+         </Badge>
+      </div>
+   );
 }
 
-export const SystemOverview = () => {
-   const systemMetrics: SystemMetric[] = [
+interface SystemOverviewProps {
+   stats?: AdminStats;
+   network?: BlockchainNetworkStatus;
+   readyz?: ReadyzResponse;
+   isLoading?: boolean;
+}
+
+export const SystemOverview = ({ stats, network, readyz, isLoading }: SystemOverviewProps) => {
+   const dash = isLoading ? "—" : undefined;
+
+   const metrics = [
       {
          label: "Total Users",
-         value: 156,
-         change: { value: 12, isPositive: true },
+         value: dash ?? stats?.total_users?.toLocaleString() ?? "—",
          icon: <Users size={20} />,
          color: "text-(--info)",
       },
       {
          label: "Total Documents",
-         value: "2,453",
-         change: { value: 8, isPositive: true },
+         value: dash ?? stats?.total_documents?.toLocaleString() ?? "—",
          icon: <FileText size={20} />,
          color: "text-(--success)",
       },
       {
          label: "Storage Used",
-         value: "245 GB",
-         change: { value: 15, isPositive: false },
+         value: dash ?? stats?.storage_display ?? "—",
          icon: <HardDrive size={20} />,
          color: "text-(--warning)",
       },
       {
          label: "System Uptime",
-         value: "99.8%",
-         change: { value: 0.2, isPositive: true },
+         value: dash ?? stats?.uptime_display ?? "—",
          icon: <Activity size={20} />,
          color: "text-(--success)",
       },
    ];
+
+   const networkAvailable = network?.available ?? false;
+   const networkLoading = isLoading || network === undefined;
 
    return (
       <Card className='p-6'>
@@ -64,95 +85,70 @@ export const SystemOverview = () => {
 
          {/* Metrics Grid */}
          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6'>
-            {systemMetrics.map((metric, index) => (
+            {metrics.map((metric, index) => (
                <div key={index} className='p-4 rounded-lg border bg-card'>
                   <div className='flex items-center justify-between mb-2'>
-                     <span
-                        className={cn("p-2 rounded-lg bg-muted", metric.color)}
-                     >
+                     <span className={cn("p-2 rounded-lg bg-muted", metric.color)}>
                         {metric.icon}
                      </span>
-                     {metric.change && (
-                        <span
-                           className={cn(
-                              "text-xs font-medium flex items-center gap-1",
-                              metric.change.isPositive
-                                 ? "text-(--success)"
-                                 : "text-(--error)"
-                           )}
-                        >
-                           <TrendingUp
-                              size={12}
-                              className={cn(
-                                 !metric.change.isPositive && "rotate-180"
-                              )}
-                           />
-                           {metric.change.value}%
-                        </span>
-                     )}
                   </div>
-                  <p className='text-2xl font-bold'>{metric.value}</p>
-                  <p className='text-xs text-muted-foreground mt-1'>
-                     {metric.label}
+                  <p className={cn("text-2xl font-bold", isLoading && "text-muted-foreground")}>
+                     {metric.value}
                   </p>
+                  <p className='text-xs text-muted-foreground mt-1'>{metric.label}</p>
                </div>
             ))}
-         </div>
-
-         {/* Storage Usage */}
-         <div className='space-y-2 mb-6'>
-            <div className='flex items-center justify-between text-sm'>
-               <span className='text-muted-foreground'>Storage Usage</span>
-               <span className='font-medium'>245 GB / 500 GB</span>
-            </div>
-            <Progress value={49} className='h-2' />
-            <p className='text-xs text-muted-foreground'>
-               49% used · 255 GB remaining
-            </p>
          </div>
 
          {/* System Health Indicators */}
          <div className='space-y-3'>
             <h3 className='text-sm font-medium'>System Health</h3>
 
-            <div className='flex items-center justify-between p-3 rounded-lg bg-(--success)/10 border border-(--success)/20'>
-               <div className='flex items-center gap-2'>
-                  <CheckCircle2 size={16} className='text-(--success)' />
-                  <span className='text-sm font-medium'>API Services</span>
-               </div>
-               <Badge
-                  variant='outline'
-                  className='text-(--success) border-(--success)'
-               >
-                  Operational
-               </Badge>
-            </div>
+            {/* PostgreSQL */}
+            <HealthRow
+               label='PostgreSQL'
+               up={readyz?.dependencies.postgres.status === "up"}
+               latencyMs={readyz?.dependencies.postgres.latency_ms}
+               loading={!readyz}
+            />
 
-            <div className='flex items-center justify-between p-3 rounded-lg bg-(--success)/10 border border-(--success)/20'>
-               <div className='flex items-center gap-2'>
-                  <CheckCircle2 size={16} className='text-(--success)' />
-                  <span className='text-sm font-medium'>
-                     Blockchain Network
-                  </span>
-               </div>
-               <Badge
-                  variant='outline'
-                  className='text-(--success) border-(--success)'
-               >
-                  Connected
-               </Badge>
-            </div>
+            {/* Redis */}
+            <HealthRow
+               label='Redis'
+               up={readyz?.dependencies.redis.status === "up"}
+               latencyMs={readyz?.dependencies.redis.latency_ms}
+               loading={!readyz}
+            />
 
-            <div className='flex items-center justify-between p-3 rounded-lg bg-(--warning)/10 border border-(--warning)/20'>
+            {/* Blockchain Network */}
+            <div className={cn(
+               "flex items-center justify-between p-3 rounded-lg border",
+               networkLoading
+                  ? "bg-muted/30 border-border"
+                  : networkAvailable
+                  ? "bg-(--success)/10 border-(--success)/20"
+                  : "bg-(--error)/10 border-(--error)/20"
+            )}>
                <div className='flex items-center gap-2'>
-                  <Clock size={16} className='text-(--warning)' />
-                  <span className='text-sm font-medium'>Backup Service</span>
+                  {networkAvailable
+                     ? <CheckCircle2 size={16} className='text-(--success)' />
+                     : <XCircle size={16} className={networkLoading ? "text-muted-foreground" : "text-(--error)"} />
+                  }
+                  <span className='text-sm font-medium'>Blockchain Network</span>
+                  {network && (
+                     <span className='text-xs text-muted-foreground'>
+                        {network.channel} / {network.chaincode}
+                     </span>
+                  )}
                </div>
-               <Badge
-                  variant='outline'
-                  className='text-(--warning) border-(--warning)'
-               >
-                  In Progress
+               <Badge variant='outline' className={cn(
+                  networkLoading
+                     ? "text-muted-foreground border-border"
+                     : networkAvailable
+                     ? "text-(--success) border-(--success)"
+                     : "text-(--error) border-(--error)"
+               )}>
+                  {networkLoading ? "Checking…" : networkAvailable ? `Connected · ${network?.peer_status}` : "Disconnected"}
                </Badge>
             </div>
          </div>

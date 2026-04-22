@@ -1,16 +1,26 @@
 "use client";
 
 import { FC, useCallback, useState } from "react";
-import { Upload, X, File, FileText, Image as ImageIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import {
+   File,
+   FileText,
+   Image as ImageIcon,
+   Lock,
+   Plus,
+   Upload,
+   X,
+} from "lucide-react";
 import { useToast } from "@/lib/hooks/useToast";
 import { DocumentMetadata } from "@/lib/types/document";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/utils/format";
+import {
+   DcButton,
+   DcInput,
+   DcTextarea,
+   Field,
+} from "@/components/design/primitives";
+import { Switch } from "@/components/ui/switch";
 
 interface DocumentUploaderProps {
    onUpload: (file: File, metadata: DocumentMetadata) => Promise<void>;
@@ -18,23 +28,29 @@ interface DocumentUploaderProps {
    progress?: number;
 }
 
-const ACCEPTED_FILE_TYPES = {
+// Every extension for which we have a preview path (or graceful fallback).
+const ACCEPTED_FILE_TYPES: Record<string, string[]> = {
    "application/pdf": [".pdf"],
-   "application/msword": [".doc"],
    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
       ".docx",
    ],
-   "text/plain": [".txt"],
-   "image/*": [".png", ".jpg", ".jpeg", ".gif", ".svg"],
+   "application/msword": [".doc"],
+   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+      ".xlsx",
+   ],
+   "application/vnd.ms-excel": [".xls"],
+   "text/csv": [".csv"],
+   "text/plain": [".txt", ".log"],
+   "text/markdown": [".md", ".markdown"],
+   "image/*": [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".bmp"],
+   "video/*": [".mp4", ".webm", ".mov", ".m4v"],
+   "application/zip": [".zip"],
+   "application/x-7z-compressed": [".7z"],
+   "application/json": [".json"],
 };
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB
 
-/**
- * DocumentUploader Component
- * Handles file upload with drag-and-drop support
- * Follows Single Responsibility Principle - only handles upload UI
- */
 export const DocumentUploader: FC<DocumentUploaderProps> = ({
    onUpload,
    isUploading = false,
@@ -47,11 +63,11 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
       description: "",
       tags: [],
       isEncrypted: false,
+      isConfidential: false,
    });
    const [tagInput, setTagInput] = useState("");
    const toast = useToast();
 
-   // Validate file
    const validateFile = useCallback((file: File): string | null => {
       if (file.size > MAX_FILE_SIZE) {
          return `File size exceeds ${formatBytes(MAX_FILE_SIZE)}`;
@@ -59,7 +75,6 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
       return null;
    }, []);
 
-   // Handle file selection
    const handleFileSelect = useCallback(
       (file: File) => {
          const error = validateFile(file);
@@ -67,60 +82,48 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
             toast.error("Invalid file", error);
             return;
          }
-
          setSelectedFile(file);
          setMetadata((prev) => ({
             ...prev,
-            title: file.name.replace(/\.[^/.]+$/, ""), // Remove extension
+            title: file.name.replace(/\.[^/.]+$/, ""),
          }));
       },
       [validateFile, toast]
    );
 
-   // Drag and drop handlers
    const handleDragEnter = useCallback((e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(true);
    }, []);
-
    const handleDragLeave = useCallback((e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(false);
    }, []);
-
    const handleDragOver = useCallback((e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
    }, []);
-
    const handleDrop = useCallback(
       (e: React.DragEvent) => {
          e.preventDefault();
          e.stopPropagation();
          setIsDragging(false);
-
          const files = e.dataTransfer.files;
-         if (files.length > 0) {
-            handleFileSelect(files[0]);
-         }
+         if (files.length > 0) handleFileSelect(files[0]);
       },
       [handleFileSelect]
    );
 
-   // File input change
    const handleFileInputChange = useCallback(
       (e: React.ChangeEvent<HTMLInputElement>) => {
          const files = e.target.files;
-         if (files && files.length > 0) {
-            handleFileSelect(files[0]);
-         }
+         if (files && files.length > 0) handleFileSelect(files[0]);
       },
       [handleFileSelect]
    );
 
-   // Add tag
    const handleAddTag = useCallback(() => {
       if (tagInput.trim() && !metadata.tags.includes(tagInput.trim())) {
          setMetadata((prev) => ({
@@ -131,7 +134,6 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
       }
    }, [tagInput, metadata.tags]);
 
-   // Remove tag
    const handleRemoveTag = useCallback((tag: string) => {
       setMetadata((prev) => ({
          ...prev,
@@ -139,56 +141,58 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
       }));
    }, []);
 
-   // Handle upload
    const handleUpload = useCallback(async () => {
       if (!selectedFile) return;
-
       if (!metadata.title.trim()) {
          toast.error("Title required", "Please enter a title for the document");
          return;
       }
-
       try {
          await onUpload(selectedFile, metadata);
-
-         // Reset form
          setSelectedFile(null);
          setMetadata({
             title: "",
             description: "",
             tags: [],
             isEncrypted: false,
+            isConfidential: false,
          });
          setTagInput("");
-      } catch (error) {
-         // Error handled by parent component
+      } catch {
+         // Parent handles error toast
       }
    }, [selectedFile, metadata, onUpload, toast]);
 
-   // Get file icon
-   const getFileIcon = (file: File) => {
-      if (file.type.startsWith("image/")) return ImageIcon;
-      if (file.type === "application/pdf") return FileText;
-      return File;
+   const renderFileIcon = (size: number) => {
+      const color = "var(--dc-text-muted)";
+      if (!selectedFile) return <Upload size={size} style={{ color }} />;
+      if (selectedFile.type.startsWith("image/"))
+         return <ImageIcon size={size} style={{ color }} />;
+      if (selectedFile.type === "application/pdf")
+         return <FileText size={size} style={{ color }} />;
+      return <File size={size} style={{ color }} />;
    };
 
-   const FileIcon = selectedFile ? getFileIcon(selectedFile) : Upload;
-
    return (
-      <div className='space-y-6'>
-         {/* Drop Zone */}
+      <div className='space-y-5'>
+         {/* Drop zone */}
          <div
             onDragEnter={handleDragEnter}
             onDragLeave={handleDragLeave}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
             className={cn(
-               "relative border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-               isDragging
-                  ? "border-primary bg-primary/5"
-                  : "border-muted-foreground/25 hover:border-primary/50",
-               isUploading && "pointer-events-none opacity-50"
+               "relative rounded-xl p-6 text-center transition-all",
+               isUploading && "pointer-events-none opacity-60"
             )}
+            style={{
+               border: `1.5px dashed ${
+                  isDragging ? "var(--dc-accent-border)" : "var(--dc-border-strong)"
+               }`,
+               background: isDragging
+                  ? "var(--dc-accent-soft)"
+                  : "var(--dc-surface-2)",
+            }}
          >
             <input
                type='file'
@@ -202,146 +206,271 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
             {!selectedFile ? (
                <label
                   htmlFor='file-upload'
-                  className='cursor-pointer flex flex-col items-center gap-4'
+                  className='cursor-pointer flex flex-col items-center gap-3 py-6'
                >
-                  <div className='rounded-full bg-muted p-4'>
-                     <Upload size={32} className='text-muted-foreground' />
+                  <div
+                     className='w-14 h-14 rounded-full flex items-center justify-center'
+                     style={{
+                        background: "var(--dc-surface)",
+                        border: "1px solid var(--dc-border)",
+                        color: isDragging ? "var(--dc-accent)" : "var(--dc-text-muted)",
+                     }}
+                  >
+                     <Upload size={22} strokeWidth={1.75} />
                   </div>
                   <div>
-                     <p className='text-lg font-medium'>
-                        Drag and drop your file here
+                     <p
+                        className='text-[14px] font-medium'
+                        style={{ color: "var(--dc-text)" }}
+                     >
+                        {isDragging
+                           ? "Drop to upload"
+                           : "Drag and drop your file here"}
                      </p>
-                     <p className='text-sm text-muted-foreground mt-1'>
+                     <p
+                        className='text-[12px] mt-1'
+                        style={{ color: "var(--dc-text-dim)" }}
+                     >
                         or click to browse
                      </p>
                   </div>
-                  <p className='text-xs text-muted-foreground'>
-                     Supports PDF, DOC, DOCX, TXT, Images (Max{" "}
-                     {formatBytes(MAX_FILE_SIZE)})
+                  <p
+                     className='text-[11px]'
+                     style={{ color: "var(--dc-text-faint)" }}
+                  >
+                     PDF, Word, Excel, CSV, Markdown, text, images, video · max{" "}
+                     {formatBytes(MAX_FILE_SIZE)}
                   </p>
                </label>
             ) : (
-               <div className='flex items-start gap-4'>
-                  <div className='rounded-lg bg-muted p-3'>
-                     <FileIcon size={32} className='text-muted-foreground' />
+               <div className='flex items-start gap-3 text-left'>
+                  <div
+                     className='w-11 h-11 rounded-md flex items-center justify-center shrink-0'
+                     style={{
+                        background: "var(--dc-surface)",
+                        border: "1px solid var(--dc-border)",
+                     }}
+                  >
+                     {renderFileIcon(20)}
                   </div>
-                  <div className='flex-1 text-left'>
-                     <p className='font-medium'>{selectedFile.name}</p>
-                     <p className='text-sm text-muted-foreground mt-1'>
+                  <div className='flex-1 min-w-0'>
+                     <p
+                        className='text-[13px] font-semibold truncate'
+                        style={{ color: "var(--dc-text)" }}
+                        title={selectedFile.name}
+                     >
+                        {selectedFile.name}
+                     </p>
+                     <p
+                        className='text-[11.5px] mt-0.5 tabular-nums'
+                        style={{ color: "var(--dc-text-dim)" }}
+                     >
                         {formatBytes(selectedFile.size)}
                      </p>
                   </div>
-                  <Button
-                     variant='ghost'
-                     size='icon'
+                  <button
+                     type='button'
                      onClick={() => setSelectedFile(null)}
                      disabled={isUploading}
+                     aria-label='Remove file'
+                     className='w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0 disabled:opacity-50'
+                     style={{ color: "var(--dc-text-muted)" }}
+                     onMouseEnter={(e) => {
+                        if (!isUploading) {
+                           e.currentTarget.style.background = "var(--dc-surface-3)";
+                           e.currentTarget.style.color = "var(--dc-text)";
+                        }
+                     }}
+                     onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.color = "var(--dc-text-muted)";
+                     }}
                   >
-                     <X size={20} />
-                  </Button>
+                     <X size={14} strokeWidth={1.75} />
+                  </button>
                </div>
             )}
 
-            {/* Progress Bar */}
+            {/* Progress bar — pinned to the bottom edge of the drop zone */}
             {isUploading && (
-               <div className='absolute bottom-0 left-0 right-0 h-1 bg-muted rounded-b-lg overflow-hidden'>
+               <div
+                  className='absolute bottom-0 left-0 right-0 h-1 rounded-b-xl overflow-hidden'
+                  style={{ background: "var(--dc-surface-3)" }}
+               >
                   <div
-                     className='h-full bg-primary transition-all duration-300'
-                     style={{ width: `${progress}%` }}
+                     className='h-full transition-all duration-300'
+                     style={{
+                        width: `${progress}%`,
+                        background: "var(--dc-accent)",
+                     }}
                   />
                </div>
             )}
          </div>
 
-         {/* Metadata Form */}
+         {/* Metadata form — appears after a file is selected */}
          {selectedFile && (
             <div className='space-y-4'>
-               <div>
-                  <Label htmlFor='title'>Title *</Label>
-                  <Input
-                     id='title'
+               <Field label='Title' required htmlFor='up-title'>
+                  <DcInput
+                     id='up-title'
                      value={metadata.title}
-                     onChange={(e) =>
-                        setMetadata((prev) => ({
-                           ...prev,
-                           title: e.target.value,
-                        }))
+                     onChange={(v) =>
+                        setMetadata((prev) => ({ ...prev, title: v }))
                      }
                      placeholder='Enter document title'
                      disabled={isUploading}
                   />
-               </div>
+               </Field>
 
-               <div>
-                  <Label htmlFor='description'>Description</Label>
-                  <Textarea
-                     id='description'
-                     value={metadata.description}
-                     onChange={(e) =>
-                        setMetadata((prev) => ({
-                           ...prev,
-                           description: e.target.value,
-                        }))
+               <Field label='Description' htmlFor='up-desc'>
+                  <DcTextarea
+                     id='up-desc'
+                     value={metadata.description ?? ""}
+                     onChange={(v) =>
+                        setMetadata((prev) => ({ ...prev, description: v }))
                      }
-                     placeholder='Enter document description'
+                     placeholder='What is this document about?'
                      rows={3}
                      disabled={isUploading}
                   />
-               </div>
+               </Field>
 
-               <div>
-                  <Label htmlFor='tags'>Tags</Label>
+               <Field label='Tags' htmlFor='up-tags'>
                   <div className='flex gap-2'>
-                     <Input
-                        id='tags'
+                     <DcInput
+                        id='up-tags'
                         value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
+                        onChange={setTagInput}
+                        placeholder='Add a tag and press Enter'
+                        disabled={isUploading}
                         onKeyDown={(e) => {
                            if (e.key === "Enter") {
                               e.preventDefault();
                               handleAddTag();
                            }
                         }}
-                        placeholder='Add tags'
-                        disabled={isUploading}
                      />
-                     <Button
-                        type='button'
-                        variant='secondary'
+                     <DcButton
+                        icon={<Plus size={14} strokeWidth={2} />}
                         onClick={handleAddTag}
                         disabled={isUploading || !tagInput.trim()}
                      >
                         Add
-                     </Button>
+                     </DcButton>
                   </div>
                   {metadata.tags.length > 0 && (
-                     <div className='flex flex-wrap gap-2 mt-2'>
+                     <div className='flex flex-wrap gap-1.5 mt-2'>
                         {metadata.tags.map((tag) => (
-                           <Badge
+                           <button
                               key={tag}
-                              variant='secondary'
-                              className='cursor-pointer'
+                              type='button'
                               onClick={() => handleRemoveTag(tag)}
+                              className='inline-flex items-center gap-1 h-6 pl-2 pr-1 rounded-full text-[11.5px] font-medium transition-colors'
+                              style={{
+                                 background: "var(--dc-surface-2)",
+                                 color: "var(--dc-text-muted)",
+                                 border: "1px solid var(--dc-border)",
+                              }}
+                              onMouseEnter={(e) => {
+                                 e.currentTarget.style.background =
+                                    "var(--dc-surface-3)";
+                                 e.currentTarget.style.color = "var(--dc-text)";
+                              }}
+                              onMouseLeave={(e) => {
+                                 e.currentTarget.style.background =
+                                    "var(--dc-surface-2)";
+                                 e.currentTarget.style.color =
+                                    "var(--dc-text-muted)";
+                              }}
+                              title='Remove tag'
                            >
                               {tag}
-                              <X size={12} className='ml-1' />
-                           </Badge>
+                              <X size={11} strokeWidth={2} />
+                           </button>
                         ))}
                      </div>
                   )}
-               </div>
+               </Field>
 
-               <Button
+               {/* Confidential toggle — mirrors the detail-page banner's
+                   amber palette. Flipping this sets is_confidential=true
+                   on the multipart upload so the backend routes every
+                   future download through the forensic watermark path. */}
+               <label
+                  htmlFor='up-confidential'
+                  className='flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors'
+                  style={{
+                     background: metadata.isConfidential
+                        ? "var(--dc-warn-soft)"
+                        : "var(--dc-surface-2)",
+                     border: `1px solid ${
+                        metadata.isConfidential
+                           ? "var(--dc-warn-border)"
+                           : "var(--dc-border)"
+                     }`,
+                  }}
+               >
+                  <div
+                     className='w-9 h-9 rounded-lg flex items-center justify-center shrink-0'
+                     style={{
+                        background: metadata.isConfidential
+                           ? "var(--dc-warn-border)"
+                           : "var(--dc-surface)",
+                        border: `1px solid ${
+                           metadata.isConfidential
+                              ? "var(--dc-warn-border)"
+                              : "var(--dc-border)"
+                        }`,
+                        color: metadata.isConfidential
+                           ? "var(--dc-warn)"
+                           : "var(--dc-text-muted)",
+                     }}
+                  >
+                     <Lock size={15} strokeWidth={2} />
+                  </div>
+                  <div className='flex-1 min-w-0'>
+                     <div
+                        className='text-[13px] font-semibold'
+                        style={{ color: "var(--dc-text)" }}
+                     >
+                        Mark as Confidential
+                     </div>
+                     <div
+                        className='text-[11.5px] mt-0.5 leading-snug'
+                        style={{ color: "var(--dc-text-dim)" }}
+                     >
+                        Downloads will be forensically watermarked so leaks
+                        can be traced back to the downloader.
+                     </div>
+                  </div>
+                  <Switch
+                     id='up-confidential'
+                     checked={!!metadata.isConfidential}
+                     onCheckedChange={(checked) =>
+                        setMetadata((prev) => ({
+                           ...prev,
+                           isConfidential: checked,
+                        }))
+                     }
+                     disabled={isUploading}
+                  />
+               </label>
+
+               <DcButton
+                  variant='primary'
                   onClick={handleUpload}
                   disabled={isUploading || !metadata.title.trim()}
-                  className='w-full'
+                  className='w-full justify-center'
+                  icon={<Upload size={14} strokeWidth={2} />}
                >
                   {isUploading
-                     ? `Uploading... ${progress}%`
+                     ? `Uploading… ${progress}%`
                      : "Upload Document"}
-               </Button>
+               </DcButton>
             </div>
          )}
       </div>
    );
 };
+

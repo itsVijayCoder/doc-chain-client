@@ -21,7 +21,13 @@ export const SidebarLink: FC<SidebarLinkProps> = ({
    badge,
 }) => {
    const pathname = usePathname();
-   const isActive = pathname === href || pathname.startsWith(href + "/");
+   // Use prefix matching only for deep routes (e.g. /documents/[id]).
+   // Top-level index routes like /admin and /dashboard must be exact-match
+   // only, otherwise every child route lights them up too.
+   const segments = href.split("/").filter(Boolean);
+   const isActive =
+      pathname === href ||
+      (segments.length > 1 && pathname.startsWith(href + "/"));
 
    return (
       <Link

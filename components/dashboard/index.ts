@@ -7,3 +7,4 @@ export { QuickActions } from "./QuickActions";
 export { BlockchainStats } from "./BlockchainStats";
 export { SystemOverview } from "./SystemOverview";
 export { AdminActivityLog } from "./AdminActivityLog";
+export { RecentDocuments } from "./RecentDocuments";

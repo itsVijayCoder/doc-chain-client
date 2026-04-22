@@ -34,9 +34,9 @@ export const AvatarUpload: FC<AvatarUploadProps> = ({
          return;
       }
 
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-         alert("File size must be less than 5MB");
+      // Validate file size (max 2MB — backend enforced)
+      if (file.size > 2 * 1024 * 1024) {
+         alert("File size must be less than 2MB");
          return;
       }
 
@@ -129,7 +129,7 @@ export const AvatarUpload: FC<AvatarUploadProps> = ({
             <div className='flex-1'>
                <h3 className='font-semibold mb-2'>Profile Photo</h3>
                <p className='text-sm text-muted-foreground mb-4'>
-                  Upload a new avatar. Max size 5MB.
+                  Upload a new avatar. Max size 2MB.
                </p>
 
                <div className='flex gap-2'>

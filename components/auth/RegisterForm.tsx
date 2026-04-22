@@ -1,11 +1,13 @@
 "use client";
 
-import { FC, useState } from "react";
+import { FC } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/lib/hooks/useAuth";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRegister } from "@/lib/hooks/useAuth";
 import { useToast } from "@/lib/hooks/useToast";
-import { isValidEmail, validatePassword } from "@/lib/utils/validation";
+import { registerSchema, type RegisterInput } from "@/lib/schemas/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,255 +15,171 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { BlockchainBadge } from "./BlockchainBadge";
 import { PasswordStrengthMeter } from "./PasswordStrengthMeter";
 import { cn } from "@/lib/utils";
+import type { ApiError } from "@/lib/types";
 
 export const RegisterForm: FC = () => {
    const router = useRouter();
-   const { register, isLoading } = useAuth();
+   const register = useRegister();
    const toast = useToast();
 
-   const [formData, setFormData] = useState({
-      name: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      agreeToTerms: false,
+   const {
+      register: rhfRegister,
+      handleSubmit,
+      setValue,
+      watch,
+      formState: { errors, isSubmitting, touchedFields },
+   } = useForm<RegisterInput>({
+      resolver: zodResolver(registerSchema),
+      mode: "onBlur",
+      defaultValues: {
+         name: "",
+         email: "",
+         password: "",
+         confirmPassword: "",
+         agreeToTerms: false as unknown as true,
+      },
    });
 
-   const [errors, setErrors] = useState<Record<string, string>>({});
-   const [touched, setTouched] = useState<Record<string, boolean>>({});
+   const watchedPassword = watch("password");
 
-   // Real-time validation
-   const validateField = (name: string, value: any) => {
-      switch (name) {
-         case "name":
-            if (!value) return "Name is required";
-            if (value.length < 2) return "Name must be at least 2 characters";
-            return "";
-         case "email":
-            if (!value) return "Email is required";
-            if (!isValidEmail(value)) return "Invalid email address";
-            return "";
-         case "password":
-            if (!value) return "Password is required";
-            const passwordValidation = validatePassword(value);
-            if (!passwordValidation.isValid) {
-               return passwordValidation.feedback[0] || "Password is too weak";
-            }
-            return "";
-         case "confirmPassword":
-            if (!value) return "Please confirm your password";
-            if (value !== formData.password) return "Passwords do not match";
-            return "";
-         case "agreeToTerms":
-            if (!value) return "You must agree to the terms and conditions";
-            return "";
-         default:
-            return "";
-      }
-   };
-
-   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({ ...prev, [name]: value }));
-
-      // Validate on change if field was touched
-      if (touched[name]) {
-         const error = validateField(name, value);
-         setErrors((prev) => ({ ...prev, [name]: error }));
-      }
-
-      // Re-validate confirm password if password changes
-      if (name === "password" && touched.confirmPassword) {
-         const confirmError =
-            formData.confirmPassword !== value ? "Passwords do not match" : "";
-         setErrors((prev) => ({ ...prev, confirmPassword: confirmError }));
-      }
-   };
-
-   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-      const { name, value } = e.target;
-      setTouched((prev) => ({ ...prev, [name]: true }));
-      const error = validateField(name, value);
-      setErrors((prev) => ({ ...prev, [name]: error }));
-   };
-
-   const handleCheckboxChange = (checked: boolean) => {
-      setFormData((prev) => ({ ...prev, agreeToTerms: checked }));
-      if (touched.agreeToTerms) {
-         const error = validateField("agreeToTerms", checked);
-         setErrors((prev) => ({ ...prev, agreeToTerms: error }));
-      }
-   };
-
-   const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-
-      // Mark all fields as touched
-      const allTouched = Object.keys(formData).reduce((acc, key) => {
-         acc[key] = true;
-         return acc;
-      }, {} as Record<string, boolean>);
-      setTouched(allTouched);
-
-      // Validate all fields
-      const newErrors: Record<string, string> = {};
-      Object.keys(formData).forEach((key) => {
-         const error = validateField(
-            key,
-            formData[key as keyof typeof formData]
-         );
-         if (error) newErrors[key] = error;
-      });
-
-      setErrors(newErrors);
-
-      if (Object.keys(newErrors).length > 0) {
-         toast.error("Please fix the errors before submitting");
-         return;
-      }
-
+   const onSubmit = async (values: RegisterInput) => {
       try {
-         await register({
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-            confirmPassword: formData.confirmPassword,
-            agreeToTerms: formData.agreeToTerms,
+         await register.mutateAsync({
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            confirmPassword: values.confirmPassword,
+            agreeToTerms: values.agreeToTerms,
          });
-
          toast.success(
             "Account created!",
             "Welcome to DocChain. Your account is now protected by blockchain technology."
          );
          router.push("/dashboard");
-      } catch (error: any) {
+      } catch (err) {
+         const apiErr = err as ApiError;
+         const detail = apiErr?.details?.[0];
+         if (apiErr?.code === "USER_ALREADY_EXISTS") {
+            toast.error(
+               "Registration failed",
+               "An account with this email already exists"
+            );
+            return;
+         }
          toast.error(
             "Registration failed",
-            error.message || "Something went wrong"
+            detail || apiErr?.message || "Something went wrong"
          );
       }
    };
 
+   const isLoading = isSubmitting || register.isPending;
+
    return (
-      <form onSubmit={handleSubmit} className='space-y-5'>
-         {/* Blockchain Badge */}
+      <form onSubmit={handleSubmit(onSubmit)} className='space-y-5'>
          <div className='flex justify-center'>
             <BlockchainBadge size='sm' />
          </div>
 
-         {/* Name Field */}
          <div className='space-y-2'>
             <Label htmlFor='name'>Full name</Label>
             <Input
                id='name'
-               name='name'
                type='text'
                autoComplete='name'
                placeholder='John Doe'
-               value={formData.name}
-               onChange={handleChange}
-               onBlur={handleBlur}
+               aria-invalid={!!errors.name}
+               {...rhfRegister("name")}
                className={cn(
                   errors.name &&
-                     touched.name &&
+                     touchedFields.name &&
                      "border-(--error) focus-visible:ring-(--error)"
                )}
             />
-            {errors.name && touched.name && (
-               <p className='text-xs text-(--error)'>{errors.name}</p>
+            {errors.name && (
+               <p className='text-xs text-(--error)'>{errors.name.message}</p>
             )}
          </div>
 
-         {/* Email Field */}
          <div className='space-y-2'>
             <Label htmlFor='email'>Email address</Label>
             <Input
                id='email'
-               name='email'
                type='email'
                autoComplete='email'
                placeholder='you@example.com'
-               value={formData.email}
-               onChange={handleChange}
-               onBlur={handleBlur}
+               aria-invalid={!!errors.email}
+               {...rhfRegister("email")}
                className={cn(
                   errors.email &&
-                     touched.email &&
+                     touchedFields.email &&
                      "border-(--error) focus-visible:ring-(--error)"
                )}
             />
-            {errors.email && touched.email && (
-               <p className='text-xs text-(--error)'>{errors.email}</p>
+            {errors.email && (
+               <p className='text-xs text-(--error)'>{errors.email.message}</p>
             )}
          </div>
 
-         {/* Password Field */}
          <div className='space-y-2'>
             <Label htmlFor='password'>Password</Label>
             <Input
                id='password'
-               name='password'
                type='password'
                autoComplete='new-password'
                placeholder='••••••••'
-               value={formData.password}
-               onChange={handleChange}
-               onBlur={handleBlur}
+               aria-invalid={!!errors.password}
+               {...rhfRegister("password")}
                className={cn(
                   errors.password &&
-                     touched.password &&
+                     touchedFields.password &&
                      "border-(--error) focus-visible:ring-(--error)"
                )}
             />
-            {errors.password && touched.password && (
-               <p className='text-xs text-(--error)'>{errors.password}</p>
+            {errors.password && (
+               <p className='text-xs text-(--error)'>
+                  {errors.password.message}
+               </p>
             )}
-
-            {/* AI-powered Password Strength Meter */}
-            {formData.password && (
+            {watchedPassword && (
                <div className='pt-2'>
-                  <PasswordStrengthMeter password={formData.password} />
+                  <PasswordStrengthMeter password={watchedPassword} />
                </div>
             )}
          </div>
 
-         {/* Confirm Password Field */}
          <div className='space-y-2'>
             <Label htmlFor='confirmPassword'>Confirm password</Label>
             <Input
                id='confirmPassword'
-               name='confirmPassword'
                type='password'
                autoComplete='new-password'
                placeholder='••••••••'
-               value={formData.confirmPassword}
-               onChange={handleChange}
-               onBlur={handleBlur}
+               aria-invalid={!!errors.confirmPassword}
+               {...rhfRegister("confirmPassword")}
                className={cn(
                   errors.confirmPassword &&
-                     touched.confirmPassword &&
+                     touchedFields.confirmPassword &&
                      "border-(--error) focus-visible:ring-(--error)"
                )}
             />
-            {errors.confirmPassword && touched.confirmPassword && (
+            {errors.confirmPassword && (
                <p className='text-xs text-(--error)'>
-                  {errors.confirmPassword}
+                  {errors.confirmPassword.message}
                </p>
             )}
          </div>
 
-         {/* Terms and Conditions */}
          <div className='space-y-2'>
             <div className='flex items-start space-x-2'>
                <Checkbox
                   id='agreeToTerms'
-                  checked={formData.agreeToTerms}
-                  onCheckedChange={handleCheckboxChange}
-                  className={cn(
-                     errors.agreeToTerms &&
-                        touched.agreeToTerms &&
-                        "border-(--error)"
-                  )}
+                  onCheckedChange={(checked) =>
+                     setValue("agreeToTerms", checked === true ? true : (false as unknown as true), {
+                        shouldValidate: true,
+                     })
+                  }
+                  className={cn(errors.agreeToTerms && "border-(--error)")}
                />
                <label
                   htmlFor='agreeToTerms'
@@ -283,14 +201,13 @@ export const RegisterForm: FC = () => {
                   </Link>
                </label>
             </div>
-            {errors.agreeToTerms && touched.agreeToTerms && (
+            {errors.agreeToTerms && (
                <p className='text-xs text-(--error) ml-6'>
-                  {errors.agreeToTerms}
+                  {errors.agreeToTerms.message}
                </p>
             )}
          </div>
 
-         {/* Submit Button */}
          <Button type='submit' className='w-full' disabled={isLoading}>
             {isLoading ? (
                <>
@@ -320,7 +237,6 @@ export const RegisterForm: FC = () => {
             )}
          </Button>
 
-         {/* Login Link */}
          <p className='text-center text-sm text-muted-foreground'>
             Already have an account?{" "}
             <Link
@@ -331,7 +247,6 @@ export const RegisterForm: FC = () => {
             </Link>
          </p>
 
-         {/* AI Security Notice */}
          <div className='p-3 rounded-lg bg-ai/5 border border-ai/10'>
             <div className='flex items-start gap-2'>
                <svg

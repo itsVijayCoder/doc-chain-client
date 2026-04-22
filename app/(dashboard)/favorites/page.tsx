@@ -1,313 +1,277 @@
 "use client";
 
-import { FC, useEffect } from "react";
-import { useDocumentStore } from "@/lib/stores/documentStore";
-import { DocumentCard } from "@/components/documents/DocumentCard";
-import { DocumentList } from "@/components/documents/DocumentList";
-import { Button } from "@/components/ui/button";
-import { Star, Heart, Grid3X3, List, Search, SortAsc } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { FC, ReactNode, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import {
+   useFavoritedDocuments,
+   useRemoveFavorite,
+} from "@/lib/hooks/useDocuments";
+import { useToast } from "@/lib/hooks/useToast";
+import type { ApiError } from "@/lib/types";
+import type {
+   DocumentSortBy,
+   DocumentSortDir,
+} from "@/lib/services/documentService";
+import {
+   ArrowDownUp,
+   ChevronLeft,
+   ChevronRight,
+   FileX,
+   Heart,
+   HeartOff,
+   Star,
+} from "lucide-react";
+import {
+   DcButton,
+   PageHead,
+} from "@/components/design/primitives";
+import { UtilityDocCard } from "@/components/documents/UtilityDocCard";
 
-/**
- * FavoritesPage Component
- * Display and manage favorite documents
- * Follows Single Responsibility Principle - focused on favorites management
- */
-const FavoritesPage: FC = () => {
-   const { documents, isLoading, fetchDocuments, toggleFavorite } =
-      useDocumentStore();
+const SORT_CYCLE: { value: FavoriteSortKey; label: string }[] = [
+   { value: "recent", label: "Recently modified" },
+   { value: "oldest", label: "Oldest first" },
+   { value: "name", label: "Name A–Z" },
+];
 
-   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-   const [sortBy, setSortBy] = useState<"recent" | "name" | "size">("recent");
+type FavoriteSortKey = "recent" | "oldest" | "name";
 
-   // Filter only favorite documents
-   const favoriteDocuments = documents.filter((doc) => doc.isFavorite);
-
-   // Sort favorites
-   const sortedFavorites = [...favoriteDocuments].sort((a, b) => {
-      switch (sortBy) {
-         case "recent":
-            return (
-               new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-            );
-         case "name":
-            return a.title.localeCompare(b.title);
-         case "size":
-            return b.fileSize - a.fileSize;
-         default:
-            return 0;
-      }
-   });
-
-   // Fetch documents on mount
-   useEffect(() => {
-      fetchDocuments();
-   }, [fetchDocuments]);
-
-   // Handle document actions
-   const handleView = (id: string) => {
-      window.location.href = `/documents/${id}`;
-   };
-
-   const handleDownload = (id: string) => {
-      console.log("Download favorite:", id);
-   };
-
-   const handleShare = (id: string) => {
-      console.log("Share favorite:", id);
-   };
-
-   const handleDelete = (id: string) => {
-      console.log("Delete favorite:", id);
-   };
-
-   const handleVerify = (id: string) => {
-      console.log("Verify favorite:", id);
-   };
-
-   const handleRemoveFromFavorites = async (id: string) => {
-      try {
-         await toggleFavorite(id);
-      } catch (error) {
-         console.error("Failed to remove from favorites:", error);
-      }
-   };
-
-   // Loading state
-   if (isLoading) {
-      return (
-         <div className='container mx-auto p-6'>
-            <div className='flex items-center justify-center h-64'>
-               <div className='text-center'>
-                  <div className='inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-4' />
-                  <p className='text-sm text-muted-foreground'>
-                     Loading favorites...
-                  </p>
-               </div>
-            </div>
-         </div>
-      );
+function mapSort(sort: FavoriteSortKey): { sortBy: DocumentSortBy; sortDir: DocumentSortDir } {
+   switch (sort) {
+      case "oldest": return { sortBy: "updated_at", sortDir: "asc" };
+      case "name":   return { sortBy: "title",      sortDir: "asc" };
+      case "recent":
+      default:       return { sortBy: "updated_at", sortDir: "desc" };
    }
+}
+
+export default function FavoritesPage() {
+   const router = useRouter();
+   const toast = useToast();
+   const [sortKey, setSortKey] = useState<FavoriteSortKey>("recent");
+   const [page, setPage] = useState(1);
+
+   const params = useMemo(() => {
+      const sort = mapSort(sortKey);
+      return { page, pageSize: 24, sortBy: sort.sortBy, sortDir: sort.sortDir };
+   }, [page, sortKey]);
+
+   const { data, isLoading, isError, error, isFetching } = useFavoritedDocuments(params);
+   const removeFavorite = useRemoveFavorite();
+
+   const items = data?.documents ?? [];
+   const meta = data?.meta;
+
+   const handleRemove = async (id: string, title: string) => {
+      try {
+         await removeFavorite.mutateAsync(id);
+         toast.success("Removed", `"${title}" removed from favorites`);
+      } catch (err) {
+         const apiErr = err as ApiError;
+         toast.error("Failed", apiErr?.message ?? "Could not remove favorite");
+      }
+   };
+
+   const cycleSort = () => {
+      const idx = SORT_CYCLE.findIndex((s) => s.value === sortKey);
+      setSortKey(SORT_CYCLE[(idx + 1) % SORT_CYCLE.length].value);
+      setPage(1);
+   };
+   const currentSortLabel =
+      SORT_CYCLE.find((s) => s.value === sortKey)?.label ?? "Recently modified";
 
    return (
-      <div className='container mx-auto p-6 space-y-6'>
-         {/* Header */}
-         <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
-            <div className='flex items-center gap-4'>
-               <div className='p-3 bg-yellow-500/10 rounded-xl'>
-                  <Star
-                     size={28}
-                     className='text-yellow-500'
-                     fill='currentColor'
-                  />
-               </div>
-               <div>
-                  <h1 className='text-3xl font-bold tracking-tight'>
-                     Favorites
-                  </h1>
-                  <p className='text-sm text-muted-foreground mt-1'>
-                     {favoriteDocuments.length} document
-                     {favoriteDocuments.length !== 1 ? "s" : ""} marked as
-                     favorite
-                  </p>
-               </div>
-            </div>
-
-            {favoriteDocuments.length > 0 && (
-               <div className='flex items-center gap-2 flex-wrap'>
-                  {/* Sort dropdown */}
-                  <select
-                     value={sortBy}
-                     onChange={(e) => setSortBy(e.target.value as any)}
-                     className='px-3 py-2 border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary'
+      <div className='animate-[fadeIn_280ms_cubic-bezier(.4,0,.2,1)]'>
+         <PageHead
+            title='Favorites'
+            titleIcon={<Star size={22} strokeWidth={1.75} />}
+            subtitle={
+               <>
+                  <span>
+                     {meta?.total ?? 0} document
+                     {(meta?.total ?? 0) === 1 ? "" : "s"} marked as favorite
+                  </span>
+               </>
+            }
+            actions={
+               items.length > 0 ? (
+                  <DcButton
+                     icon={<ArrowDownUp size={14} strokeWidth={2} />}
+                     onClick={cycleSort}
+                     title='Cycle sort'
                   >
-                     <option value='recent'>Recently Modified</option>
-                     <option value='name'>Name</option>
-                     <option value='size'>File Size</option>
-                  </select>
+                     {currentSortLabel}
+                  </DcButton>
+               ) : undefined
+            }
+         />
 
-                  {/* View mode toggle */}
-                  <div className='flex border rounded-lg overflow-hidden'>
-                     <Button
-                        variant={viewMode === "grid" ? "default" : "ghost"}
-                        size='sm'
-                        onClick={() => setViewMode("grid")}
-                        className='rounded-none border-none'
-                     >
-                        <Grid3X3 size={16} />
-                     </Button>
-                     <Button
-                        variant={viewMode === "list" ? "default" : "ghost"}
-                        size='sm'
-                        onClick={() => setViewMode("list")}
-                        className='rounded-none border-l'
-                     >
-                        <List size={16} />
-                     </Button>
-                  </div>
-               </div>
-            )}
-         </div>
+         {isError && <ErrorBanner title='Failed to load favorites' message={error?.message} />}
+         {isLoading && <LoadingState label='Loading favorites…' />}
 
-         {/* Empty state */}
-         {favoriteDocuments.length === 0 && (
-            <div className='flex items-center justify-center py-20'>
-               <div className='text-center max-w-md'>
-                  <div className='inline-flex items-center justify-center w-20 h-20 bg-muted rounded-full mb-6'>
-                     <Star size={40} className='text-muted-foreground' />
-                  </div>
-                  <h3 className='text-2xl font-semibold mb-3'>
-                     No Favorites Yet
-                  </h3>
-                  <p className='text-muted-foreground mb-8 leading-relaxed'>
-                     Start building your favorites collection by clicking the
-                     star icon on any document you want to access quickly.
-                  </p>
-                  <div className='flex flex-col sm:flex-row gap-3 justify-center'>
-                     <Button
-                        variant='default'
-                        onClick={() => (window.location.href = "/documents")}
-                     >
-                        <Search size={16} className='mr-2' />
-                        Browse Documents
-                     </Button>
-                     <Button
-                        variant='outline'
-                        onClick={() => (window.location.href = "/search")}
-                     >
-                        <Search size={16} className='mr-2' />
-                        Search Documents
-                     </Button>
-                  </div>
-               </div>
-            </div>
+         {!isLoading && !isError && items.length === 0 && (
+            <EmptyState
+               icon={<Heart size={32} strokeWidth={1.25} />}
+               title='No favorites yet'
+               message='Star any document to find it here quickly.'
+               cta={{ label: "Browse Documents", href: "/documents" }}
+            />
          )}
 
-         {/* Favorites Grid/List */}
-         {favoriteDocuments.length > 0 && (
-            <div className='space-y-6'>
-               {/* Quick stats */}
-               <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
-                     <div className='flex items-start justify-between mb-3'>
-                        <div className='p-2.5 bg-yellow-500/10 rounded-lg'>
-                           <Star
-                              size={20}
-                              className='text-yellow-500'
-                              fill='currentColor'
-                           />
-                        </div>
-                     </div>
-                     <p className='text-3xl font-bold mb-1'>
-                        {favoriteDocuments.length}
-                     </p>
-                     <p className='text-sm text-muted-foreground'>Favorites</p>
-                  </div>
-
-                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
-                     <div className='flex items-start justify-between mb-3'>
-                        <div className='p-2.5 bg-red-500/10 rounded-lg'>
-                           <Heart size={20} className='text-red-500' />
-                        </div>
-                     </div>
-                     <p className='text-3xl font-bold mb-1'>
-                        {
-                           favoriteDocuments.filter((d) => d.blockchainVerified)
-                              .length
-                        }
-                     </p>
-                     <p className='text-sm text-muted-foreground'>Verified</p>
-                  </div>
-
-                  <div className='bg-card border rounded-xl p-5 hover:shadow-md transition-shadow'>
-                     <div className='flex items-start justify-between mb-3'>
-                        <div className='p-2.5 bg-blue-500/10 rounded-lg'>
-                           <SortAsc size={20} className='text-blue-500' />
-                        </div>
-                     </div>
-                     <p className='text-3xl font-bold mb-1'>
-                        {Math.round(
-                           favoriteDocuments.reduce(
-                              (sum, d) => sum + d.fileSize,
-                              0
-                           ) / 1048576
-                        )}
-                        MB
-                     </p>
-                     <p className='text-sm text-muted-foreground'>Total Size</p>
-                  </div>
-               </div>
-
-               {/* Documents */}
-               <div
-                  className={cn(
-                     "grid gap-6",
-                     viewMode === "grid"
-                        ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                        : "grid-cols-1 max-w-4xl mx-auto"
-                  )}
-               >
-                  {sortedFavorites.map((document) => (
-                     <div key={document.id} className='relative group'>
-                        {/* Favorite indicator overlay */}
-                        <div className='absolute -top-2 -left-2 z-20'>
-                           <div className='p-1.5 bg-yellow-500 rounded-full shadow-md'>
-                              <Star
-                                 size={14}
-                                 className='text-white'
-                                 fill='currentColor'
-                              />
-                           </div>
-                        </div>
-
-                        <DocumentCard
-                           document={document}
-                           onView={handleView}
-                           onDownload={handleDownload}
-                           onShare={handleShare}
-                           onDelete={handleDelete}
-                           onVerify={handleVerify}
-                        />
-
-                        {/* Remove from favorites button (on hover) */}
-                        <Button
-                           variant='destructive'
+         {items.length > 0 && (
+            <div className='grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-3'>
+               {items.map((doc) => (
+                  <UtilityDocCard
+                     key={doc.id}
+                     doc={doc}
+                     onOpen={() => router.push(`/documents/${doc.id}`)}
+                     actions={
+                        <DcButton
+                           variant='ghost'
                            size='sm'
-                           onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveFromFavorites(document.id);
-                           }}
-                           className='absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity h-8 px-3'
+                           icon={<HeartOff size={13} strokeWidth={1.75} />}
+                           onClick={() => handleRemove(doc.id, doc.title)}
+                           disabled={removeFavorite.isPending}
                         >
                            Remove
-                        </Button>
-                     </div>
-                  ))}
-               </div>
-
-               {/* Bottom actions */}
-               <div className='flex justify-center pt-8 border-t'>
-                  <div className='flex flex-wrap gap-3 justify-center'>
-                     <Button
-                        variant='outline'
-                        onClick={() => (window.location.href = "/documents")}
-                     >
-                        Browse All Documents
-                     </Button>
-                     <Button
-                        variant='outline'
-                        onClick={() => (window.location.href = "/search")}
-                     >
-                        <Search size={16} className='mr-2' />
-                        Search
-                     </Button>
-                  </div>
-               </div>
+                        </DcButton>
+                     }
+                  />
+               ))}
             </div>
          )}
+
+         <Paginator
+            page={page}
+            meta={meta}
+            isFetching={isFetching}
+            onPrev={() => setPage((p) => Math.max(1, p - 1))}
+            onNext={() => setPage((p) => Math.min(meta?.total_pages ?? 1, p + 1))}
+         />
+      </div>
+   );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Shared helpers (also used by archived/trash/shared pages)
+// ─────────────────────────────────────────────────────────────────────
+
+export const ErrorBanner: FC<{ title: string; message?: string }> = ({
+   title,
+   message,
+}) => (
+   <div
+      className='rounded-md p-4 text-[13px] mb-4'
+      style={{
+         background: "var(--dc-danger-soft)",
+         border: "1px solid var(--dc-danger-border)",
+         color: "var(--dc-danger)",
+      }}
+   >
+      <p className='font-medium'>{title}</p>
+      {message && <p className='opacity-80 mt-1'>{message}</p>}
+   </div>
+);
+
+export const LoadingState: FC<{ label: string }> = ({ label }) => (
+   <div className='flex items-center justify-center py-20'>
+      <div className='text-center'>
+         <div
+            className='inline-block w-8 h-8 rounded-full border-b-2 animate-spin'
+            style={{ borderColor: "var(--dc-accent)" }}
+         />
+         <p
+            className='text-[13px] mt-3'
+            style={{ color: "var(--dc-text-dim)" }}
+         >
+            {label}
+         </p>
+      </div>
+   </div>
+);
+
+export const EmptyState: FC<{
+   icon: ReactNode;
+   title: string;
+   message: string;
+   cta?: { label: string; href: string };
+}> = ({ icon, title, message, cta }) => (
+   <div
+      className='py-20 text-center rounded-xl'
+      style={{
+         background: "var(--dc-surface)",
+         border: "1px solid var(--dc-border)",
+      }}
+   >
+      <div
+         className='mx-auto mb-4 w-14 h-14 rounded-full flex items-center justify-center'
+         style={{
+            background: "var(--dc-surface-2)",
+            border: "1px solid var(--dc-border)",
+            color: "var(--dc-text-muted)",
+         }}
+      >
+         {icon}
+      </div>
+      <p
+         className='text-[15px] font-semibold'
+         style={{ color: "var(--dc-text)" }}
+      >
+         {title}
+      </p>
+      <p
+         className='text-[13px] mt-1 max-w-sm mx-auto'
+         style={{ color: "var(--dc-text-dim)" }}
+      >
+         {message}
+      </p>
+      {cta && (
+         <Link
+            href={cta.href}
+            className='inline-flex items-center gap-1.5 h-8 px-3 mt-4 rounded-md text-[13px] font-medium transition-colors'
+            style={{
+               background: "var(--dc-surface-2)",
+               border: "1px solid var(--dc-border)",
+               color: "var(--dc-text)",
+            }}
+         >
+            {cta.label}
+         </Link>
+      )}
+   </div>
+);
+
+export const Paginator: FC<{
+   page: number;
+   meta?: { page: number; total_pages: number };
+   isFetching?: boolean;
+   onPrev: () => void;
+   onNext: () => void;
+}> = ({ page, meta, isFetching, onPrev, onNext }) => {
+   if (!meta || meta.total_pages <= 1) return null;
+   return (
+      <div className='flex items-center justify-between pt-4 mt-2'>
+         <p className='text-[12px]' style={{ color: "var(--dc-text-dim)" }}>
+            Page {meta.page} of {meta.total_pages}
+         </p>
+         <div className='flex gap-2'>
+            <DcButton
+               size='sm'
+               icon={<ChevronLeft size={12} strokeWidth={2} />}
+               onClick={onPrev}
+               disabled={page <= 1 || isFetching}
+            >
+               Previous
+            </DcButton>
+            <DcButton
+               size='sm'
+               onClick={onNext}
+               disabled={page >= meta.total_pages || isFetching}
+            >
+               Next
+               <ChevronRight size={12} strokeWidth={2} />
+            </DcButton>
+         </div>
       </div>
    );
 };
-
-export default FavoritesPage;

@@ -4,6 +4,7 @@ import { FC } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, Trash2, Upload, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMyPermissions } from "@/lib/hooks/useMyPermissions";
 
 interface DocumentActionsProps {
    selectedCount: number;
@@ -29,6 +30,8 @@ export const DocumentActions: FC<DocumentActionsProps> = ({
    onVerifySelected,
    className,
 }) => {
+   const { shouldHide } = useMyPermissions();
+
    return (
       <div
          className={cn(
@@ -102,7 +105,7 @@ export const DocumentActions: FC<DocumentActionsProps> = ({
                </>
             ) : (
                <>
-                  {onUpload && (
+                  {onUpload && !shouldHide("can_upload") && (
                      <Button onClick={onUpload} className='gap-2'>
                         <Upload size={16} />
                         Upload Document

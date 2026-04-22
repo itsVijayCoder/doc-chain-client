@@ -73,7 +73,7 @@ export const SearchResults: FC = () => {
          case "name":
             return a.title.localeCompare(b.title);
          case "size":
-            return b.fileSize - a.fileSize;
+            return (b.fileSize ?? 0) - (a.fileSize ?? 0);
          default:
             return 0;
       }

@@ -4,24 +4,31 @@ import { SettingsLayout } from "@/components/settings/SettingsLayout";
 import { ProfileForm } from "@/components/settings/profile/ProfileForm";
 import { DeleteAccount } from "@/components/settings/profile/DeleteAccount";
 
-/**
- * Profile Settings Page
- * Manages user profile information and account settings
- */
 export default function ProfileSettingsPage() {
    return (
       <SettingsLayout>
-         <div className='space-y-6'>
+         <div className='p-7 space-y-6'>
             <div>
-               <h1 className='text-2xl font-bold'>Profile Settings</h1>
-               <p className='text-muted-foreground mt-1'>
+               <h2
+                  className='text-[18px] font-semibold tracking-[-0.01em] m-0'
+                  style={{ color: "var(--dc-text)" }}
+               >
+                  Profile Settings
+               </h2>
+               <p
+                  className='text-[12.5px] mt-1'
+                  style={{ color: "var(--dc-text-dim)" }}
+               >
                   Manage your profile information and account
                </p>
             </div>
 
             <ProfileForm />
 
-            <div className='pt-6 border-t'>
+            <div
+               className='pt-6'
+               style={{ borderTop: "1px solid var(--dc-border)" }}
+            >
                <DeleteAccount />
             </div>
          </div>

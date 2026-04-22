@@ -3,17 +3,12 @@
 import { FC, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
-   User,
-   Shield,
-   Settings as SettingsIcon,
    ChevronRight,
+   Settings as SettingsIcon,
+   Shield,
+   User,
 } from "lucide-react";
-
-interface SettingsSidebarProps {
-   className?: string;
-}
 
 interface NavItem {
    id: string;
@@ -23,84 +18,109 @@ interface NavItem {
    description: string;
 }
 
-const navItems: NavItem[] = [
+const NAV_ITEMS: NavItem[] = [
    {
       id: "profile",
       label: "Profile",
       href: "/settings/profile",
-      icon: <User size={20} />,
-      description: "Manage your personal information",
+      icon: <User size={16} strokeWidth={1.75} />,
+      description: "Manage your personal info",
    },
    {
       id: "security",
       label: "Security",
       href: "/settings/security",
-      icon: <Shield size={20} />,
-      description: "Password and security settings",
+      icon: <Shield size={16} strokeWidth={1.75} />,
+      description: "Password and security",
    },
    {
       id: "preferences",
       label: "Preferences",
       href: "/settings/preferences",
-      icon: <SettingsIcon size={20} />,
+      icon: <SettingsIcon size={16} strokeWidth={1.75} />,
       description: "Customize your experience",
    },
 ];
 
 /**
- * SettingsSidebar Component
- * Navigation sidebar for settings pages
- * Follows Single Responsibility Principle - only handles settings navigation
+ * Settings tab list — matches the design's 220px left sidebar.
+ * Page title + sub + vertical tabs with active-state border + chevron.
  */
-export const SettingsSidebar: FC<SettingsSidebarProps> = ({ className }) => {
+export const SettingsSidebar: FC = () => {
    const pathname = usePathname();
 
    return (
-      <aside className={cn("w-full lg:w-64 space-y-1", className)}>
-         <div className='mb-6'>
-            <h2 className='text-2xl font-bold'>Settings</h2>
-            <p className='text-sm text-muted-foreground'>
-               Manage your account settings and preferences
-            </p>
-         </div>
+      <aside className='min-w-0'>
+         <h1
+            className='text-[22px] font-semibold tracking-[-0.02em] m-0'
+            style={{
+               color: "var(--dc-text)",
+               fontFamily: "var(--dc-font-display)",
+            }}
+         >
+            Settings
+         </h1>
+         <p
+            className='text-[13px] mt-1 mb-5'
+            style={{ color: "var(--dc-text-dim)" }}
+         >
+            Manage your account settings and preferences
+         </p>
 
-         <nav className='space-y-1'>
-            {navItems.map((item) => {
-               const isActive = pathname === item.href;
-
+         <nav className='flex flex-col gap-1'>
+            {NAV_ITEMS.map((item) => {
+               const active = pathname === item.href;
                return (
                   <Link
                      key={item.id}
                      href={item.href}
-                     className={cn(
-                        "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors group",
-                        "hover:bg-accent",
-                        isActive && "bg-accent text-accent-foreground"
-                     )}
+                     className='flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-colors'
+                     style={{
+                        background: active ? "var(--dc-surface-2)" : "transparent",
+                        border: active
+                           ? "1px solid var(--dc-border-strong)"
+                           : "1px solid transparent",
+                     }}
+                     onMouseEnter={(e) => {
+                        if (!active)
+                           e.currentTarget.style.background = "var(--dc-surface-2)";
+                     }}
+                     onMouseLeave={(e) => {
+                        if (!active)
+                           e.currentTarget.style.background = "transparent";
+                     }}
                   >
-                     <div
-                        className={cn(
-                           "shrink-0 text-muted-foreground",
-                           isActive && "text-foreground"
-                        )}
+                     <span
+                        className='shrink-0'
+                        style={{
+                           color: active
+                              ? "var(--dc-text)"
+                              : "var(--dc-text-muted)",
+                        }}
                      >
                         {item.icon}
-                     </div>
-
+                     </span>
                      <div className='flex-1 min-w-0'>
-                        <div className='font-medium'>{item.label}</div>
-                        <div className='text-xs text-muted-foreground truncate'>
+                        <div
+                           className='text-[13px] font-semibold'
+                           style={{ color: "var(--dc-text)" }}
+                        >
+                           {item.label}
+                        </div>
+                        <div
+                           className='text-[11px] truncate'
+                           style={{ color: "var(--dc-text-dim)" }}
+                        >
                            {item.description}
                         </div>
                      </div>
-
-                     <ChevronRight
-                        size={16}
-                        className={cn(
-                           "shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity",
-                           isActive && "opacity-100"
-                        )}
-                     />
+                     {active && (
+                        <ChevronRight
+                           size={12}
+                           strokeWidth={2}
+                           style={{ color: "var(--dc-text-muted)" }}
+                        />
+                     )}
                   </Link>
                );
             })}

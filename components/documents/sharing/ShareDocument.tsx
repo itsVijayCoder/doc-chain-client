@@ -1,11 +1,10 @@
 "use client";
 
 import { FC, useState } from "react";
-import { Document } from "@/lib/types/document";
+import { Document, Share } from "@/lib/types/document";
 import { User } from "@/lib/types/user";
-import { Share } from "@/lib/types/document";
 import { useToast } from "@/lib/hooks/useToast";
-import { ShareModal } from "./ShareModal";
+import { useUserSearch } from "@/lib/hooks/useUsers";
 import { UserSearchCombobox } from "./UserSearchCombobox";
 import { PermissionSelector, PermissionLevel } from "./PermissionSelector";
 import { CurrentShares } from "./CurrentShares";
@@ -17,7 +16,6 @@ import { Share2 } from "lucide-react";
 interface ShareDocumentProps {
    document: Document;
    shares: Share[];
-   availableUsers: User[];
    onShare: (userId: string, permission: PermissionLevel) => Promise<void>;
    onRemoveShare: (shareId: string) => Promise<void>;
    onGenerateLink: (
@@ -26,15 +24,9 @@ interface ShareDocumentProps {
    onRevokeLink: (linkId: string) => Promise<void>;
 }
 
-/**
- * ShareDocument Component
- * Reusable sharing component that can be embedded in modals or pages
- * Follows Open/Closed Principle - extensible via props
- */
 export const ShareDocument: FC<ShareDocumentProps> = ({
    document,
    shares,
-   availableUsers,
    onShare,
    onRemoveShare,
    onGenerateLink,
@@ -44,6 +36,10 @@ export const ShareDocument: FC<ShareDocumentProps> = ({
    const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
    const [permission, setPermission] = useState<PermissionLevel>("view");
    const [isSharing, setIsSharing] = useState(false);
+   const [searchQuery, setSearchQuery] = useState("");
+
+   const searchResult = useUserSearch(searchQuery, 20);
+   const searchUsers = searchResult.data ?? [];
 
    const handleShare = async () => {
       if (selectedUsers.length === 0) {
@@ -90,16 +86,16 @@ export const ShareDocument: FC<ShareDocumentProps> = ({
             <h3 className='font-semibold'>Share with Users</h3>
 
             <UserSearchCombobox
-               users={availableUsers}
+               users={searchUsers}
                selectedUsers={selectedUsers}
+               onSearchChange={setSearchQuery}
                onSelectUser={(user) =>
-                  setSelectedUsers([...selectedUsers, user])
+                  setSelectedUsers((prev) => [...prev, user])
                }
                onDeselectUser={(user) =>
-                  setSelectedUsers(
-                     selectedUsers.filter((u) => u.id !== user.id)
-                  )
+                  setSelectedUsers((prev) => prev.filter((u) => u.id !== user.id))
                }
+               isLoading={searchResult.isFetching}
             />
 
             {selectedUsers.length > 0 && (

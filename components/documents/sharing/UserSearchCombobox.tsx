@@ -21,40 +21,36 @@ interface UserSearchComboboxProps {
    selectedUsers: User[];
    onSelectUser: (user: User) => void;
    onDeselectUser: (user: User) => void;
+   /** When provided, server-side search is used instead of client-side filtering. */
+   onSearchChange?: (q: string) => void;
    placeholder?: string;
    isLoading?: boolean;
 }
 
-/**
- * UserSearchCombobox Component
- * Searchable user selection with avatar and role display
- * Follows Single Responsibility Principle - only handles user search/selection
- */
 export const UserSearchCombobox: FC<UserSearchComboboxProps> = ({
    users,
    selectedUsers,
    onSelectUser,
    onDeselectUser,
+   onSearchChange,
    placeholder = "Search users...",
    isLoading = false,
 }) => {
    const [search, setSearch] = useState("");
-   const [filteredUsers, setFilteredUsers] = useState<User[]>(users);
+
+   const filteredUsers = onSearchChange
+      ? users // server already filtered
+      : search.trim()
+      ? users.filter(
+           (u) =>
+              u.name.toLowerCase().includes(search.toLowerCase()) ||
+              u.email.toLowerCase().includes(search.toLowerCase())
+        )
+      : users;
 
    useEffect(() => {
-      if (!search.trim()) {
-         setFilteredUsers(users);
-         return;
-      }
-
-      const searchLower = search.toLowerCase();
-      const filtered = users.filter(
-         (user) =>
-            user.name.toLowerCase().includes(searchLower) ||
-            user.email.toLowerCase().includes(searchLower)
-      );
-      setFilteredUsers(filtered);
-   }, [search, users]);
+      onSearchChange?.(search);
+   }, [search]); // eslint-disable-line react-hooks/exhaustive-deps
 
    const isSelected = (user: User) => {
       return selectedUsers.some((u) => u.id === user.id);

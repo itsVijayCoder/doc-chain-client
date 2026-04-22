@@ -16,6 +16,8 @@ interface DocumentListProps {
    onShare: (id: string) => void;
    onDelete: (id: string) => void;
    onVerify?: (id: string) => void;
+   onArchiveToggle?: (id: string) => void;
+   onFavoriteToggle?: (id: string) => void;
    selectedDocuments?: string[];
    onSelectDocument?: (id: string) => void;
    isLoading?: boolean;
@@ -35,6 +37,8 @@ export const DocumentList: FC<DocumentListProps> = ({
    onShare,
    onDelete,
    onVerify,
+   onArchiveToggle,
+   onFavoriteToggle,
    selectedDocuments = [],
    onSelectDocument,
    isLoading = false,
@@ -106,6 +110,8 @@ export const DocumentList: FC<DocumentListProps> = ({
                   onShare={onShare}
                   onDelete={onDelete}
                   onVerify={onVerify}
+                  onArchiveToggle={onArchiveToggle}
+                  onFavoriteToggle={onFavoriteToggle}
                   selected={selectedDocuments.includes(document.id)}
                   onSelect={onSelectDocument}
                />

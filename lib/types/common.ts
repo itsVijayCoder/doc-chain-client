@@ -15,7 +15,8 @@ export interface ApiError {
    message: string;
    code?: string;
    statusCode: number;
-   details?: any;
+   details?: string[];
+   requestId?: string;
 }
 
 export interface Activity {

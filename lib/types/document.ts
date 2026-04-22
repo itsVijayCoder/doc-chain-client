@@ -4,24 +4,47 @@ export interface Document {
    id: string;
    title: string;
    description?: string;
-   fileName: string;
-   fileSize: number;
    mimeType: string;
    ownerId: string;
-   owner: User;
+   // Tags as display names. Backend returns TagResponse objects with
+   // {id, name, slug, color}; adapter maps to .name for now. Future work
+   // can expose richer tag shape when we build the tag picker UI.
    tags: string[];
-   blockchainHash?: string;
-   blockchainVerified: boolean;
-   isEncrypted: boolean;
    isFavorite: boolean;
-   isDeleted: boolean;
-   deletedAt?: Date;
    createdAt: Date;
    updatedAt: Date;
    version: number;
-   shareCount: number;
-   downloadUrl?: string;
+   // Present on DocumentResponse (backend). Prefer reading these in new code.
+   isArchived?: boolean;
+   folderId?: string;
+   isExpired?: boolean;
+   expiresAt?: Date;
+   fileIcon?: string;
    thumbnailUrl?: string;
+   /**
+    * When true, every download is routed through the forensic-watermark path
+    * on the backend and the UI shows a tracked-download confirmation. The
+    * flag is set at upload or via Document Settings; viewers cannot disable
+    * it.
+    */
+   isConfidential?: boolean;
+
+   // Legacy/enrichment fields — populated only when the backend surfaces them
+   // (detail view, blockchain verify, search result). The list endpoint does
+   // NOT return these, so every component that reads them must handle undef.
+   fileName?: string;
+   fileSize?: number;
+   owner?: User;
+   blockchainHash?: string;
+   blockchainVerified?: boolean;
+   isEncrypted?: boolean;
+   isDeleted?: boolean;
+   deletedAt?: Date;
+   shareCount?: number;
+   downloadUrl?: string;
+   // Shared-with-me fields — only present on GET /documents/shared-with-me responses
+   myPermission?: "view" | "comment" | "edit" | "admin";
+   sharedAt?: Date;
 }
 
 export interface DocumentMetadata {
@@ -29,6 +52,8 @@ export interface DocumentMetadata {
    description?: string;
    tags: string[];
    isEncrypted: boolean;
+   /** When true, every download is forensically watermarked on the backend. */
+   isConfidential?: boolean;
    shareWith?: string[];
 }
 
@@ -57,12 +82,22 @@ export interface DocumentVersion {
    id: string;
    documentId: string;
    version: number;
-   fileName: string;
    fileSize: number;
+   // SHA-256 content hash from the backend (file_hash field).
+   fileHash?: string;
+   // Blockchain record hash, if anchored. Populated only when blockchain
+   // verification endpoints return data for this version.
    blockchainHash?: string;
-   createdBy: User;
+   // Backend returns uploaded_by as a UUID only (no user object on version
+   // responses). Adapter sets a minimal stub; UI should handle undefined.
+   createdBy?: User;
+   createdById?: string;
    createdAt: Date;
    changes?: string;
+   fileName?: string;
+   thumbnailUrl?: string;
+   hasThumbnail?: boolean;
+   fileIcon?: string;
 }
 
 export interface DocumentComment {

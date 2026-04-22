@@ -8,22 +8,23 @@ interface SettingsLayoutProps {
 }
 
 /**
- * SettingsLayout Component
- * Layout wrapper for settings pages with sidebar navigation
- * Follows Single Responsibility Principle - only handles settings layout structure
+ * Settings shell — 220px left-column tab list + content panel.
+ * Matches the design's two-column layout (max-w 1020px). The right panel
+ * uses `--dc-surface` with a 14px radius to feel like a contained card.
  */
 export const SettingsLayout: FC<SettingsLayoutProps> = ({ children }) => {
    return (
-      <div className='container mx-auto p-6 max-w-7xl'>
-         <div className='flex flex-col lg:flex-row gap-8'>
-            {/* Sidebar navigation */}
-            <SettingsSidebar className='lg:sticky lg:top-6 lg:self-start' />
-
-            {/* Main content */}
-            <main className='flex-1 min-w-0'>
-               <div className='bg-card border rounded-lg p-6'>{children}</div>
-            </main>
-         </div>
+      <div className='animate-[fadeIn_280ms_cubic-bezier(.4,0,.2,1)] grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-7 max-w-[1020px]'>
+         <SettingsSidebar />
+         <section
+            className='rounded-[14px] overflow-hidden'
+            style={{
+               background: "var(--dc-surface)",
+               border: "1px solid var(--dc-border)",
+            }}
+         >
+            {children}
+         </section>
       </div>
    );
 };

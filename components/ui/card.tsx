@@ -11,7 +11,12 @@ function Card({
     <div
       data-slot="card"
       data-size={size}
-      className={cn("ring-foreground/10 bg-card text-card-foreground gap-4 overflow-hidden rounded-xl py-4 text-sm ring-1 has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl group/card flex flex-col", className)}
+      className={cn(
+        "group/card flex flex-col gap-4 overflow-hidden rounded-xl py-4 text-sm",
+        "bg-[var(--dc-surface)] text-[color:var(--dc-text)] border border-[var(--dc-border)]",
+        "has-data-[slot=card-footer]:pb-0 has-[>img:first-child]:pt-0 data-[size=sm]:gap-3 data-[size=sm]:py-3 data-[size=sm]:has-data-[slot=card-footer]:pb-0 *:[img:first-child]:rounded-t-xl *:[img:last-child]:rounded-b-xl",
+        className
+      )}
       {...props}
     />
   )
@@ -44,7 +49,8 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-[13px]", className)}
+      style={{ color: "var(--dc-text-dim)" }}
       {...props}
     />
   )
@@ -77,7 +83,11 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-footer"
-      className={cn("bg-muted/50 rounded-b-xl border-t p-4 group-data-[size=sm]/card:p-3 flex items-center", className)}
+      className={cn("rounded-b-xl p-4 group-data-[size=sm]/card:p-3 flex items-center", className)}
+      style={{
+        background: "var(--dc-surface-2)",
+        borderTop: "1px solid var(--dc-border)",
+      }}
       {...props}
     />
   )
