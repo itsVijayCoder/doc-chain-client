@@ -69,11 +69,23 @@ const iconMap = {
 export const AppSidebar: FC = () => {
    const pathname = usePathname();
    const { user, logout } = useAuth();
-   const { can } = useMyPermissions();
+   const { can, isLoading: permsLoading } = useMyPermissions();
 
    const getIcon = (name: string, size = 16) => {
       const Icon = iconMap[name as keyof typeof iconMap];
-      return Icon ? <Icon size={size} strokeWidth={1.75} /> : null;
+      if (Icon) return <Icon size={size} strokeWidth={1.75} />;
+      // Silent null-return used to eat a full class of plugin-authoring
+      // mistakes — declare icon: "Star" when the map doesn't know "Star",
+      // nav item renders with a blank where the icon should be, no
+      // console output. The dev-only warn converts that into a debuggable
+      // event.
+      if (process.env.NODE_ENV !== "production") {
+         console.warn(
+            `[plugins] Unknown icon "${name}" in sidebar. ` +
+            `Add it to iconMap in components/layout/AppSidebar.tsx.`
+         );
+      }
+      return null;
    };
 
    const filterNav = (items: readonly NavItem[]) => {
@@ -91,7 +103,16 @@ export const AppSidebar: FC = () => {
          // module items with `roles: ["all"] + permission: "x.y"` never
          // had their permission consulted. The new flow runs both gates
          // in sequence.
-         if (item.permission && !can(item.permission)) return false;
+         //
+         // While /users/me/permissions is still loading, can() would
+         // default to true (enforcementMode="off" branch) and items
+         // would flash into view, then hide when enforce kicks in.
+         // Hiding permission-gated items during load reverses that —
+         // cleaner flash direction, and matches what enforce will do.
+         if (item.permission) {
+            if (permsLoading) return false;
+            if (!can(item.permission)) return false;
+         }
          return true;
       });
    };

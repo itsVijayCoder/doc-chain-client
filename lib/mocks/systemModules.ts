@@ -13,4 +13,26 @@ import type { ServerModuleInfo } from "@/modules/types";
 export const USE_MOCK_MODULES =
    process.env.NEXT_PUBLIC_USE_MOCK_MODULES === "true";
 
-export const MOCK_SYSTEM_MODULES: ServerModuleInfo[] = [];
+export const MOCK_SYSTEM_MODULES: ServerModuleInfo[] = [
+   // Template — uncomment and adapt when installing a plugin you want
+   // to exercise in mock mode. Shape matches the real /api/v1/system/
+   // modules response so consumers can't tell real from mock:
+   //
+   // {
+   //    name: "bookmarks",
+   //    version: "1.0.0",
+   //    sidebar: [
+   //       {
+   //          icon: "Bookmark",
+   //          label: "My Bookmarks",
+   //          href: "/bookmarks",
+   //          roles: ["all"],
+   //          permission: "bookmark.create",
+   //          order: 1,
+   //       },
+   //    ],
+   //    admin_sidebar: [],
+   //    permissions: ["bookmark.create"],
+   //    permission_labels: { "bookmark.create": "Create bookmarks" },
+   // },
+];

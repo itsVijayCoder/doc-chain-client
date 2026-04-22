@@ -34,6 +34,10 @@ export interface ModuleManifest {
    routes: ModuleRoute[];
    adminRoutes?: ModuleRoute[];
    navItems: NavItem[];
+   // adminNavItems renders under the sidebar's "Admin" section — but this
+   // does NOT auto-restrict to admins. Items must still declare
+   // roles: ["admin"] explicitly. The name describes *where* (placement),
+   // not *who* (gating).
    adminNavItems?: NavItem[];
    // eslint-disable-next-line @typescript-eslint/no-explicit-any
    extensionPoints?: Record<string, LazyExoticComponent<ComponentType<any>>>;

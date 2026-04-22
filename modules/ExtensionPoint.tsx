@@ -4,6 +4,7 @@ import { Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { registry } from "./registry.generated";
 import { ModuleErrorBoundary } from "./ErrorBoundary";
 import { useEnabledModules } from "@/lib/hooks/useEnabledModules";
+import { useMyPermissions } from "@/lib/hooks/useMyPermissions";
 
 // Module-load-once registry: each bundled module's extension-point components
 // are collected at import time into a single Map keyed by extension point name.
@@ -40,8 +41,17 @@ interface ExtensionPointProps {
 // /system/modules response.
 export function ExtensionPoint({ name, ...props }: ExtensionPointProps) {
    const enabled = useEnabledModules();
+   const { isLoading: permsLoading } = useMyPermissions();
    const entries = pointRegistry.get(name);
    if (!entries || entries.length === 0) return null;
+
+   // Extension components typically gate on can() internally. During the
+   // permissions fetch, can() defaults to allow — so a bookmark button
+   // would briefly render for a user who can't create bookmarks, then
+   // disappear. Wait for permissions to resolve before mounting any
+   // extension; one render-path gate here covers all current and
+   // future extension components without each having to handle it.
+   if (permsLoading) return null;
 
    const enabledIds = new Set(enabled.map((m) => m.id));
    const live = entries.filter((e) => enabledIds.has(e.moduleId));

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 import { ModuleErrorBoundary } from "@/modules/ErrorBoundary";
 import { useEnabledModules } from "@/lib/hooks/useEnabledModules";
@@ -48,12 +48,20 @@ function findMatch(
 export default function ModuleCatchAll() {
    const pathname = usePathname();
    const enabledModules = useEnabledModules();
-   const { can } = useMyPermissions();
+   const { can, isLoading: permsLoading } = useMyPermissions();
 
-   const match = useMemo(
-      () => findMatch(pathname ?? "", enabledModules, can),
-      [pathname, enabledModules, can]
-   );
+   // Permission gate race: while /users/me/permissions is in flight,
+   // useMyPermissions returns enforcementMode="off" + permissions=[] as
+   // safe defaults — which means can() returns true for everything.
+   // If we ran findMatch now, a viewer deep-linking to a restricted
+   // route would mount the page before permissions resolve, then see
+   // every API call 403. Render the skeleton until perms finish loading.
+   if (permsLoading) return <PageSkeleton />;
+
+   // findMatch is cheap (walks a small in-memory array). No useMemo —
+   // can is a fresh closure each render from useMyPermissions, so
+   // memoizing the result here would re-run on every render anyway.
+   const match = findMatch(pathname ?? "", enabledModules, can);
 
    if (!match) return <NotFound pathname={pathname ?? ""} />;
 
