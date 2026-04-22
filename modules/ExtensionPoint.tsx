@@ -41,17 +41,18 @@ interface ExtensionPointProps {
 // /system/modules response.
 export function ExtensionPoint({ name, ...props }: ExtensionPointProps) {
    const enabled = useEnabledModules();
-   const { isLoading: permsLoading } = useMyPermissions();
+   const { isReady: permsReady } = useMyPermissions();
    const entries = pointRegistry.get(name);
    if (!entries || entries.length === 0) return null;
 
-   // Extension components typically gate on can() internally. During the
-   // permissions fetch, can() defaults to allow — so a bookmark button
-   // would briefly render for a user who can't create bookmarks, then
-   // disappear. Wait for permissions to resolve before mounting any
-   // extension; one render-path gate here covers all current and
-   // future extension components without each having to handle it.
-   if (permsLoading) return null;
+   // Today's only extension (BookmarkButton) gates on can() internally.
+   // Without this early return, it would briefly render allowed during
+   // the permissions fetch (can() defaults to true), then disappear.
+   // Gating here is convenient while the only consumer needs it; a
+   // future non-permission-gated extension (e.g., a read-only display)
+   // would be hidden unnecessarily — at that point the right move is
+   // to push the gate back into the per-extension components.
+   if (!permsReady) return null;
 
    const enabledIds = new Set(enabled.map((m) => m.id));
    const live = entries.filter((e) => enabledIds.has(e.moduleId));

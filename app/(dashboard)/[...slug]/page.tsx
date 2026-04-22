@@ -48,15 +48,16 @@ function findMatch(
 export default function ModuleCatchAll() {
    const pathname = usePathname();
    const enabledModules = useEnabledModules();
-   const { can, isLoading: permsLoading } = useMyPermissions();
+   const { can, isReady: permsReady } = useMyPermissions();
 
-   // Permission gate race: while /users/me/permissions is in flight,
-   // useMyPermissions returns enforcementMode="off" + permissions=[] as
-   // safe defaults — which means can() returns true for everything.
-   // If we ran findMatch now, a viewer deep-linking to a restricted
-   // route would mount the page before permissions resolve, then see
-   // every API call 403. Render the skeleton until perms finish loading.
-   if (permsLoading) return <PageSkeleton />;
+   // Permission gate: until /users/me/permissions has returned successfully,
+   // useMyPermissions defaults to enforcementMode="off" + permissions=[],
+   // which makes can() return true for everything. Running findMatch in
+   // that state would mount restricted pages and fire failing API calls.
+   // Gating on !isReady (instead of isLoading) also covers the fetch-
+   // error case — after a failed first fetch, isLoading is false but
+   // data is still undefined.
+   if (!permsReady) return <PageSkeleton />;
 
    // findMatch is cheap (walks a small in-memory array). No useMemo —
    // can is a fresh closure each render from useMyPermissions, so

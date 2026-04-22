@@ -63,23 +63,31 @@ const iconMap = {
 // NavItem comes from @/modules/types so core and module-contributed nav
 // items share one shape and flow through the same filter/sort pipeline.
 
+// Module-scope set of icon names we've already warned about. Keeps the
+// sidebar's per-render missing-icon warning from spamming the console on
+// every pathname change — one warning per unique missing name per session.
+const warnedIcons = new Set<string>();
+
 // Collapsed rail is 56px (w-14); expands to 232px on hover. Using group-hover
 // (not React state) keeps the interaction on the GPU-accelerated path — no
 // re-renders as the pointer moves in and out.
 export const AppSidebar: FC = () => {
    const pathname = usePathname();
    const { user, logout } = useAuth();
-   const { can, isLoading: permsLoading } = useMyPermissions();
+   const { can, isReady: permsReady } = useMyPermissions();
 
    const getIcon = (name: string, size = 16) => {
       const Icon = iconMap[name as keyof typeof iconMap];
       if (Icon) return <Icon size={size} strokeWidth={1.75} />;
       // Silent null-return used to eat a full class of plugin-authoring
-      // mistakes — declare icon: "Star" when the map doesn't know "Star",
-      // nav item renders with a blank where the icon should be, no
-      // console output. The dev-only warn converts that into a debuggable
-      // event.
-      if (process.env.NODE_ENV !== "production") {
+      // mistakes. Warn in dev, but only once per unique name — sidebar
+      // re-renders on every pathname change and a missing icon would
+      // otherwise log dozens of duplicates per session.
+      if (
+         process.env.NODE_ENV !== "production" &&
+         !warnedIcons.has(name)
+      ) {
+         warnedIcons.add(name);
          console.warn(
             `[plugins] Unknown icon "${name}" in sidebar. ` +
             `Add it to iconMap in components/layout/AppSidebar.tsx.`
@@ -104,13 +112,14 @@ export const AppSidebar: FC = () => {
          // had their permission consulted. The new flow runs both gates
          // in sequence.
          //
-         // While /users/me/permissions is still loading, can() would
-         // default to true (enforcementMode="off" branch) and items
-         // would flash into view, then hide when enforce kicks in.
-         // Hiding permission-gated items during load reverses that —
-         // cleaner flash direction, and matches what enforce will do.
+         // Permission-gated items wait until /users/me/permissions has
+         // succeeded. Gating on !isReady (rather than isLoading) also
+         // covers the fetch-error case — after a failed first fetch,
+         // enforcementMode defaults to "off" and can() returns true
+         // for everything, which would let items silently show to
+         // users we can't verify. Fail closed until we have data.
          if (item.permission) {
-            if (permsLoading) return false;
+            if (!permsReady) return false;
             if (!can(item.permission)) return false;
          }
          return true;

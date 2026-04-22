@@ -40,5 +40,12 @@ export function useMyPermissions() {
     can,
     shouldHide,
     isLoading: query.isLoading,
+    // isReady is the "authoritative permissions available" flag. Distinct
+    // from !isLoading in one important case: after a failed first fetch,
+    // isLoading is false (no longer fetching) but data is still undefined
+    // — defaults take over and `can()` returns true for everything via the
+    // enforcementMode="off" branch. Consumers that want to fail CLOSED on
+    // fetch error should gate on !isReady instead of isLoading.
+    isReady: query.isSuccess,
   };
 }
