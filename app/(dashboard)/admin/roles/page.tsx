@@ -33,6 +33,7 @@ import {
    MoreHorizontal,
    Pencil,
    Plus,
+   Puzzle,
    Settings,
    Share2,
    ShieldCheck,
@@ -44,8 +45,8 @@ import {
    roleService,
    type Role,
    type CreateRoleRequest,
-   PERMISSION_LABELS,
 } from "@/lib/services/roleService";
+import { usePermissionsCatalog } from "@/lib/hooks/usePermissionsCatalog";
 import {
    DcButton,
    Panel,
@@ -131,6 +132,12 @@ const PERMISSION_SHORT: Record<string, string> = {
 export default function AdminRolesPage() {
    const { user, isLoading: authLoading } = useAuth();
    const queryClient = useQueryClient();
+
+   // Core labels/groups merged with whatever active modules declared. Labels
+   // resolve bookmark.create → "Create bookmarks"; groups add one picker
+   // section per module so its permissions are actually assignable.
+   const { labels: permissionLabels, moduleGroups } = usePermissionsCatalog();
+   const allPermissionGroups = [...PERMISSION_GROUPS, ...moduleGroups];
 
    const [modalOpen, setModalOpen] = useState(false);
    const [editingRole, setEditingRole] = useState<Role | null>(null);
@@ -427,7 +434,7 @@ export default function AdminRolesPage() {
                                                          .slice(3)
                                                          .map(
                                                             (p) =>
-                                                               PERMISSION_LABELS[p] ?? p
+                                                               permissionLabels[p] ?? p
                                                          )
                                                          .join(", ") +
                                                       (role.permissions.length >
@@ -649,13 +656,18 @@ export default function AdminRolesPage() {
                         </span>
                      </div>
                      <div className='max-h-[40vh] overflow-y-auto space-y-3 pr-1'>
-                        {PERMISSION_GROUPS.map((group) => (
+                        {allPermissionGroups.map((group) => (
                            <PermissionGroup
                               key={group.label}
                               label={group.label}
-                              icon={group.icon}
+                              icon={
+                                 group.icon ?? (
+                                    <Puzzle size={12} strokeWidth={1.75} />
+                                 )
+                              }
                               permissions={group.permissions}
                               selected={form.permissions}
+                              labels={permissionLabels}
                               onToggle={togglePermission}
                               onToggleAll={toggleGroup}
                            />
@@ -814,6 +826,7 @@ function PermissionGroup({
    icon,
    permissions,
    selected,
+   labels,
    onToggle,
    onToggleAll,
 }: {
@@ -821,6 +834,7 @@ function PermissionGroup({
    icon: ReactNode;
    permissions: string[];
    selected: string[];
+   labels: Record<string, string>;
    onToggle: (p: string) => void;
    onToggleAll: (perms: string[], select: boolean) => void;
 }) {
@@ -917,7 +931,7 @@ function PermissionGroup({
                            checked && "font-medium"
                         )}
                      >
-                        {PERMISSION_LABELS[perm] ?? perm}
+                        {labels[perm] ?? perm}
                      </span>
                   </button>
                );
