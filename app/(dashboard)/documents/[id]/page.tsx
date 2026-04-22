@@ -51,6 +51,7 @@ import dynamic from "next/dynamic";
 import { ShareLinksPanel } from "@/components/documents/sharing/ShareLinksPanel";
 import { PermissionsPanel } from "@/components/documents/sharing/PermissionsPanel";
 import { DocumentViewer } from "@/components/documents/DocumentViewer";
+import { ExtensionPoint } from "@/modules/ExtensionPoint";
 
 const CommentsPanel = dynamic(
    () => import("@/components/documents/CommentsPanel"),
@@ -359,6 +360,13 @@ const DocumentDetailPage: FC = () => {
                >
                   {deleteMutation.isPending ? "Deleting…" : "Delete"}
                </DcButton>
+               {/* Plugin-contributed actions render here. Each is wrapped
+                   in its own ErrorBoundary + Suspense, so a broken module
+                   extension never takes down the toolbar. */}
+               <ExtensionPoint
+                  name='document.actions'
+                  documentId={documentId}
+               />
             </div>
          </div>
 
